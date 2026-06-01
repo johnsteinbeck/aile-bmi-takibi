@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Aile BMI Takibi</title>
-    <link rel="stylesheet" href="styles.css?v=20260602-5" />
+    <link rel="stylesheet" href="styles.css?v=20260602-6" />
   </head>
   <body>
     <main class="app-shell">
@@ -23,25 +23,6 @@
           <input id="importFile" type="file" accept="application/json" hidden />
           <span class="storage-status" id="storageStatus">Hazırlanıyor</span>
         </div>
-      </section>
-
-      <section class="summary-strip" aria-label="Özet">
-        <article>
-          <span id="totalPeople">0</span>
-          <p>Kişi</p>
-        </article>
-        <article>
-          <span id="trackedPeople">0</span>
-          <p>Aktif kayıt</p>
-        </article>
-        <article>
-          <span id="healthyPeople">0</span>
-          <p>İdeal aralık</p>
-        </article>
-        <article>
-          <span id="latestEntry">-</span>
-          <p>Son giriş</p>
-        </article>
       </section>
 
       <section class="controls" aria-label="Kişi arama">
@@ -64,6 +45,25 @@
           </div>
         </form>
       </section>
+
+      <section class="summary-strip" aria-label="Özet">
+        <article>
+          <span id="totalPeople">0</span>
+          <p>Kişi</p>
+        </article>
+        <article>
+          <span id="trackedPeople">0</span>
+          <p>Aktif kayıt</p>
+        </article>
+        <article>
+          <span id="healthyPeople">0</span>
+          <p>İdeal aralık</p>
+        </article>
+        <article>
+          <span id="latestEntry">-</span>
+          <p>Son giriş</p>
+        </article>
+      </section>
     </main>
 
     <dialog class="person-dialog" id="personDialog">
@@ -77,7 +77,7 @@
         <section class="profile-panel" aria-labelledby="dialogName">
           <p class="eyebrow">Kişi kaydı</p>
           <h2 id="dialogName"></h2>
-          <p class="dialog-bmi" id="dialogBmi">BMI -</p>
+          <p class="dialog-bmi" id="dialogBmi">Durum -</p>
           <div class="meter wide" aria-hidden="true">
             <div class="meter-track">
               <span class="meter-pointer" id="dialogPointer"></span>
@@ -102,11 +102,11 @@
           </div>
 
           <form class="profile-form" id="profileForm">
-            <label>
+            <label class="human-field">
               Doğum tarihi
               <input id="birthDateInput" name="birthDate" type="date" />
             </label>
-            <label>
+            <label class="human-field">
               Boy (cm)
               <input id="heightInput" name="height" type="number" inputmode="decimal" min="60" max="240" step="0.1" />
             </label>
@@ -116,6 +116,7 @@
                 <option value="">Seç</option>
                 <option value="kadın">Kadın</option>
                 <option value="erkek">Erkek</option>
+                <option value="kedi">Kedi</option>
               </select>
             </label>
             <button class="primary-button" type="submit">Profili kaydet</button>
@@ -126,11 +127,11 @@
           <form class="weight-form" id="weightForm">
             <label>
               Tarih
-              <input id="dateInput" name="date" type="date" />
+              <input id="dateInput" name="date" type="date" readonly />
             </label>
             <label>
               Kilo (kg)
-              <input id="weightInput" name="weight" type="number" inputmode="decimal" min="10" max="300" step="0.1" />
+              <input id="weightInput" name="weight" type="number" inputmode="decimal" min="0.5" max="300" step="0.1" />
             </label>
             <button class="primary-button" type="submit">Kilo ekle</button>
           </form>
@@ -175,7 +176,7 @@
       </article>
     </template>
 
-    <script src="config.js?v=20260602-5"></script>
-    <script src="app.js?v=20260602-5"></script>
+    <script src="config.js?v=20260602-6"></script>
+    <script src="app.js?v=20260602-6"></script>
   </body>
 </html>

@@ -80,9 +80,15 @@ els.exportData.addEventListener("click", exportData);
 els.importData.addEventListener("click", () => els.importFile.click());
 els.importFile.addEventListener("change", importData);
 els.editProfile.addEventListener("click", showProfileForm);
+els.genderInput.addEventListener("change", updateProfileFieldsForSpecies);
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
+window.addEventListener("focus", syncDateInput);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) syncDateInput();
+});
 
-els.dateInput.value = new Date().toISOString().slice(0, 10);
+syncDateInput();
+setInterval(syncDateInput, 60000);
 init();
 
 function createPerson(name) {
@@ -297,15 +303,15 @@ function getPeopleSelectColumns() {
 
 function getPeoplePayload(person) {
   const payload = {
-    height_cm: person.heightCm || null,
+    height_cm: isCat(person) ? null : person.heightCm || null,
     gender: person.gender || null,
   };
 
   if (birthDateColumnAvailable) {
-    payload.birth_date = person.birthDate || null;
-    payload.age = person.birthDate ? null : person.age || null;
+    payload.birth_date = isCat(person) ? null : person.birthDate || null;
+    payload.age = person.birthDate || isCat(person) ? null : person.age || null;
   } else {
-    payload.age = person.age || null;
+    payload.age = isCat(person) ? null : person.age || null;
   }
 
   return payload;
@@ -371,10 +377,10 @@ async function saveProfile(event) {
   const person = getSelectedPerson();
   if (!person) return;
 
-  person.birthDate = els.birthDateInput.value;
-  person.age = person.birthDate ? "" : person.age;
-  person.heightCm = numberOrEmpty(els.heightInput.value);
   person.gender = els.genderInput.value;
+  person.birthDate = person.gender === "kedi" ? "" : els.birthDateInput.value;
+  person.age = person.birthDate || person.gender === "kedi" ? "" : person.age;
+  person.heightCm = person.gender === "kedi" ? "" : numberOrEmpty(els.heightInput.value);
 
   try {
     await dataStore.savePerson(person);
@@ -391,7 +397,8 @@ async function addWeight(event) {
   const person = getSelectedPerson();
   if (!person) return;
 
-  const date = els.dateInput.value || new Date().toISOString().slice(0, 10);
+  syncDateInput();
+  const date = getTodayInputValue();
   const kg = Number.parseFloat(els.weightInput.value.replace(",", "."));
   if (!Number.isFinite(kg) || kg <= 0) return;
 
@@ -440,10 +447,10 @@ function render() {
 }
 
 function renderSummary() {
-  const tracked = state.people.filter((person) => getLatestWeight(person) && person.heightCm);
+  const tracked = state.people.filter((person) => getLatestWeight(person) && (person.heightCm || isCat(person)));
   const healthy = tracked.filter((person) => {
-    const bmi = calculateBmi(person);
-    return bmi && bmi >= 18.5 && bmi <= 24.9;
+    const status = getHealthStatus(person);
+    return status.label === "İdeal";
   });
   const latest = state.people
     .flatMap((person) => person.weights.map((entry) => ({ ...entry, name: person.name })))
@@ -465,7 +472,7 @@ function renderPeople() {
   people.forEach((person) => {
     const fragment = els.template.content.cloneNode(true);
     const card = fragment.querySelector(".person-card");
-    const status = getBmiStatus(calculateBmi(person));
+    const status = getHealthStatus(person);
     const latestWeight = getLatestWeight(person);
     const rewards = getRewardSummary(person);
     const pointer = fragment.querySelector(".meter-pointer");
@@ -473,9 +480,9 @@ function renderPeople() {
     card.dataset.id = person.id;
     card.querySelector("h2").textContent = person.name;
     card.querySelector(".person-meta").textContent = getPersonMeta(person);
-    card.querySelector(".status-chip").textContent = status.label;
+    card.querySelector(".status-chip").textContent = status.badge;
     if (status.color) card.querySelector(".status-chip").classList.add(status.color);
-    card.querySelector(".bmi-value").textContent = status.bmiText;
+    card.querySelector(".bmi-value").textContent = status.label;
     card.querySelector(".latest-weight").textContent = latestWeight ? `${formatNumber(latestWeight.kg)} kg` : "Kilo yok";
     card.querySelector(".recommendation").textContent = getRecommendation(person);
     card.querySelector(".reward-total").textContent = `${formatCurrency(rewards.total)} kazandı`;
@@ -513,10 +520,10 @@ function openPerson(id) {
 }
 
 function renderDialog(person) {
-  const status = getBmiStatus(calculateBmi(person));
+  const status = getHealthStatus(person);
   const profileComplete = isProfileComplete(person);
   els.dialogName.textContent = person.name;
-  els.dialogBmi.textContent = `BMI ${status.bmiText} · ${status.label}`;
+  els.dialogBmi.textContent = `Durum: ${status.label}`;
   els.dialogRecommendation.textContent = getRecommendation(person);
   renderCalories(person);
   renderRewards(person);
@@ -527,7 +534,8 @@ function renderDialog(person) {
   els.birthDateInput.value = person.birthDate ?? "";
   els.heightInput.value = person.heightCm ?? "";
   els.genderInput.value = person.gender ?? "";
-  els.dateInput.value = els.dateInput.value || new Date().toISOString().slice(0, 10);
+  updateProfileFieldsForSpecies();
+  syncDateInput();
   setPointer(els.dialogPointer, status);
   renderHistory(person);
   renderChart(person);
@@ -537,7 +545,18 @@ function showProfileForm() {
   els.profileForm.hidden = false;
   els.profileSummary.hidden = true;
   els.dialogLayout.classList.remove("profile-complete-mode");
-  els.birthDateInput.focus();
+  updateProfileFieldsForSpecies();
+  if (els.genderInput.value === "kedi") els.genderInput.focus();
+  else els.birthDateInput.focus();
+}
+
+function updateProfileFieldsForSpecies() {
+  const catMode = els.genderInput.value === "kedi";
+  document.querySelectorAll(".human-field").forEach((field) => {
+    field.hidden = catMode;
+  });
+  els.birthDateInput.disabled = catMode;
+  els.heightInput.disabled = catMode;
 }
 
 function renderHistory(person) {
@@ -628,7 +647,11 @@ function renderChart(person) {
     context.fillText(`${formatNumber(value)} kg`, 8, y + 4);
   }
 
-  if (person.heightCm) {
+  if (isCat(person)) {
+    const idealY = Math.min(padding.top + chartHeight, Math.max(padding.top, yFor(10)));
+    context.fillStyle = "rgba(53, 173, 114, 0.08)";
+    context.fillRect(padding.left, idealY, chartWidth, padding.top + chartHeight - idealY);
+  } else if (person.heightCm) {
     const h = Number(person.heightCm) / 100;
     const lowTarget = 18.5 * h * h;
     const highTarget = 24.9 * h * h;
@@ -670,6 +693,45 @@ function renderChart(person) {
   context.textAlign = "left";
 }
 
+function getHealthStatus(person) {
+  if (isCat(person)) return getCatStatus(person);
+  return getBmiStatus(calculateBmi(person));
+}
+
+function getCatStatus(person) {
+  const latestWeight = getLatestWeight(person);
+  if (!latestWeight) {
+    return {
+      label: "Eksik veri",
+      badge: "Kedi",
+      color: "",
+      pointer: 0,
+      pointerColor: "#687874",
+    };
+  }
+
+  if (latestWeight.kg < 10) {
+    return {
+      label: "İdeal",
+      badge: "Kedi",
+      color: "green",
+      pointer: Math.min(38.1, Math.max(17.3, 17.3 + (latestWeight.kg / 10) * 20.8)),
+      pointerColor: "#35ad72",
+    };
+  }
+
+  return {
+    label: latestWeight.kg >= 12 ? "Obezite" : "Fazla kilo",
+    badge: "Kedi",
+    color: latestWeight.kg >= 12 ? "red" : "yellow",
+    pointer:
+      latestWeight.kg >= 12
+        ? Math.min(100, 57.3 + (latestWeight.kg - 12) * 8)
+        : Math.min(57.3, 38.1 + ((latestWeight.kg - 10) / 2) * 19.2),
+    pointerColor: latestWeight.kg >= 12 ? "#d95252" : "#e0a72e",
+  };
+}
+
 function calculateBmi(person) {
   const latestWeight = getLatestWeight(person);
   const height = Number(person.heightCm);
@@ -682,6 +744,7 @@ function getBmiStatus(bmi) {
   if (!bmi) {
     return {
       label: "Eksik veri",
+      badge: "Durum",
       color: "",
       bmiText: "--",
       pointer: 0,
@@ -709,6 +772,7 @@ function getBmiStatus(bmi) {
 
   return {
     label,
+    badge: "Durum",
     color,
     bmiText: formatNumber(bmi),
     pointer: bmiToPointer(bmi),
@@ -730,6 +794,12 @@ function setPointer(pointer, status) {
 
 function getRecommendation(person) {
   const latestWeight = getLatestWeight(person);
+  if (isCat(person)) {
+    if (!latestWeight) return "Kedi için kilo kaydı girilmeli.";
+    if (latestWeight.kg < 10) return "Kedi 10 kg altında, ideal aralıkta kabul edildi.";
+    return `${formatNumber(latestWeight.kg - 10)} kg vermesi hedeflenir.`;
+  }
+
   const height = Number(person.heightCm);
   if (!latestWeight && !height) return "Boy ve kilo bilgisi girilmeli.";
   if (!height) return "Boy bilgisi girilmeli.";
@@ -742,7 +812,7 @@ function getRecommendation(person) {
 
   if (bmi < 18.5) return `${formatNumber(low - latestWeight.kg)} kg alması önerilir.`;
   if (bmi > 24.9) return `${formatNumber(latestWeight.kg - high)} kg vermesi önerilir.`;
-  return "İdeal BMI aralığında.";
+  return "İdeal aralıkta.";
 }
 
 function renderRewards(person) {
@@ -780,23 +850,21 @@ function getEntryWeekCount(person) {
 }
 
 function getWeightLossReward(person) {
-  const height = Number(person.heightCm);
   const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (!height || entries.length < 2) {
+  const targetWeight = getIdealUpperWeight(person);
+  if (!targetWeight || entries.length < 2) {
     return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
   }
 
   const first = entries[0];
   const latest = entries[entries.length - 1];
-  const startBmi = calculateBmiForWeight(first.kg, height);
-  if (startBmi <= 24.9) {
+  if (first.kg <= targetWeight) {
     return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
   }
 
   const lossKg = Math.max(0, first.kg - latest.kg);
-  const latestBmi = calculateBmiForWeight(latest.kg, height);
-  const distanceAtStart = Math.max(0, startBmi - 24.9);
-  const distanceNow = Math.max(0, latestBmi - 24.9);
+  const distanceAtStart = Math.max(0, first.kg - targetWeight);
+  const distanceNow = Math.max(0, latest.kg - targetWeight);
   const progress = distanceAtStart ? Math.min(1, Math.max(0, (distanceAtStart - distanceNow) / distanceAtStart)) : 0;
   const proximityPercent = progress * 10;
   const baseReward = lossKg * 250;
@@ -827,15 +895,14 @@ function getWeightGainPenalty(person) {
 }
 
 function getNormalBmiDays(person) {
-  const height = Number(person.heightCm);
   const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (!height || entries.length === 0) return 0;
+  if (entries.length === 0) return 0;
 
   const today = getTodayDayNumber();
   const tomorrow = today + 1;
 
   return entries.reduce((total, entry, index) => {
-    if (!isNormalBmi(calculateBmiForWeight(entry.kg, height))) return total;
+    if (!isIdealWeightForPerson(person, entry.kg)) return total;
 
     const start = dateToDayNumber(entry.date);
     const next = entries[index + 1] ? dateToDayNumber(entries[index + 1].date) : tomorrow;
@@ -853,6 +920,20 @@ function isNormalBmi(bmi) {
   return bmi >= 18.5 && bmi <= 24.9;
 }
 
+function isIdealWeightForPerson(person, kg) {
+  if (isCat(person)) return kg < 10;
+  const height = Number(person.heightCm);
+  return Boolean(height) && isNormalBmi(calculateBmiForWeight(kg, height));
+}
+
+function getIdealUpperWeight(person) {
+  if (isCat(person)) return 10;
+  const height = Number(person.heightCm);
+  if (!height) return null;
+  const meters = height / 100;
+  return 24.9 * meters * meters;
+}
+
 function getRewardCardText(rewards) {
   const parts = [];
   if (rewards.weeklyReward) parts.push(`${rewards.weeklyCount} hafta`);
@@ -864,7 +945,7 @@ function getRewardCardText(rewards) {
 
 function getRewardDetailText(rewards) {
   const penaltyText = rewards.gainPenalty ? `-${formatCurrency(rewards.gainPenalty)}` : formatCurrency(0);
-  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.normalDays} normal BMI günü: ${formatCurrency(rewards.normalReward)} · ${formatKg(rewards.lossKg)} düşüş: ${formatCurrency(rewards.lossReward)} · yakınlık bonusu +%${formatNumber(rewards.proximityPercent)}: ${formatCurrency(rewards.proximityBonus)} · ${formatKg(rewards.gainedKg)} artış cezası: ${penaltyText}`;
+  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.normalDays} normal aralık günü: ${formatCurrency(rewards.normalReward)} · ${formatKg(rewards.lossKg)} düşüş: ${formatCurrency(rewards.lossReward)} · yakınlık bonusu +%${formatNumber(rewards.proximityPercent)}: ${formatCurrency(rewards.proximityBonus)} · ${formatKg(rewards.gainedKg)} artış cezası: ${penaltyText}`;
 }
 
 function renderCalories(person) {
@@ -875,6 +956,13 @@ function renderCalories(person) {
 
 function getCaloriePlan(person) {
   const latestWeight = getLatestWeight(person);
+  if (isCat(person)) {
+    return {
+      target: "10 kg altı",
+      note: latestWeight && latestWeight.kg < 10 ? "Kedi modu: ideal kabul edildi." : "Kedi modu: 10 kg altı hedeflenir.",
+    };
+  }
+
   const age = calculateAge(person);
   const height = Number(person.heightCm);
   const gender = person.gender;
@@ -920,6 +1008,8 @@ function getLatestWeight(person) {
 }
 
 function getPersonMeta(person) {
+  if (isCat(person)) return "Kedi · 10 kg altı ideal";
+
   const parts = [];
   const age = calculateAge(person);
   if (age !== null) parts.push(`${age} yaş`);
@@ -929,10 +1019,13 @@ function getPersonMeta(person) {
 }
 
 function isProfileComplete(person) {
+  if (isCat(person)) return true;
   return Boolean(person.birthDate && person.heightCm && person.gender);
 }
 
 function getProfileSummary(person) {
+  if (isCat(person)) return "Kedi · 10 kg altı ideal kabul ediliyor";
+
   const age = calculateAge(person);
   const parts = [];
   if (person.birthDate) parts.push(`${formatLongDate(person.birthDate)} doğumlu`);
@@ -954,6 +1047,10 @@ function calculateAge(person) {
 
   const legacyAge = Number(person.age);
   return Number.isFinite(legacyAge) && legacyAge > 0 ? legacyAge : null;
+}
+
+function isCat(person) {
+  return person.gender === "kedi";
 }
 
 function numberOrEmpty(value) {
@@ -988,6 +1085,18 @@ function formatCurrency(value) {
 
 function roundCalories(value) {
   return Math.round(value / 10) * 10;
+}
+
+function syncDateInput() {
+  els.dateInput.value = getTodayInputValue();
+}
+
+function getTodayInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatShortDate(value) {

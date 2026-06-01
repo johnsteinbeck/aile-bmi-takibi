@@ -6,11 +6,13 @@ create table if not exists public.people (
   age integer,
   birth_date date,
   height_cm numeric(5, 2),
-  gender text check (gender in ('kadın', 'erkek') or gender is null),
+  gender text check (gender in ('kadın', 'erkek', 'kedi') or gender is null),
   created_at timestamptz not null default now()
 );
 
 alter table public.people add column if not exists birth_date date;
+alter table public.people drop constraint if exists people_gender_check;
+alter table public.people add constraint people_gender_check check (gender in ('kadın', 'erkek', 'kedi') or gender is null);
 
 create table if not exists public.weight_entries (
   id uuid primary key default gen_random_uuid(),
