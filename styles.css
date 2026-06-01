@@ -326,6 +326,18 @@ select:focus {
   font-weight: 850;
 }
 
+.bmi-value.green {
+  color: #14633d;
+}
+
+.bmi-value.yellow {
+  color: #b36c00;
+}
+
+.bmi-value.red {
+  color: #a63838;
+}
+
 .latest-weight {
   text-align: right;
   font-weight: 750;

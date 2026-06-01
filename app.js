@@ -44,6 +44,7 @@ const els = {
   dialogBmi: document.querySelector("#dialogBmi"),
   dialogPointer: document.querySelector("#dialogPointer"),
   dialogRecommendation: document.querySelector("#dialogRecommendation"),
+  calorieTitle: document.querySelector("#calorieTitle"),
   calorieTarget: document.querySelector("#calorieTarget"),
   calorieNote: document.querySelector("#calorieNote"),
   rewardTotal: document.querySelector("#rewardTotal"),
@@ -480,9 +481,13 @@ function renderPeople() {
     card.dataset.id = person.id;
     card.querySelector("h2").textContent = person.name;
     card.querySelector(".person-meta").textContent = getPersonMeta(person);
-    card.querySelector(".status-chip").textContent = status.badge;
-    if (status.color) card.querySelector(".status-chip").classList.add(status.color);
-    card.querySelector(".bmi-value").textContent = status.label;
+    const statusChip = card.querySelector(".status-chip");
+    const statusValue = card.querySelector(".bmi-value");
+    statusChip.textContent = status.badge;
+    statusChip.hidden = !status.badge;
+    if (status.color) statusChip.classList.add(status.color);
+    statusValue.textContent = status.label;
+    if (status.color) statusValue.classList.add(status.color);
     card.querySelector(".latest-weight").textContent = latestWeight ? `${formatNumber(latestWeight.kg)} kg` : "Kilo yok";
     card.querySelector(".recommendation").textContent = getRecommendation(person);
     card.querySelector(".reward-total").textContent = `${formatCurrency(rewards.total)} kazandı`;
@@ -523,7 +528,7 @@ function renderDialog(person) {
   const status = getHealthStatus(person);
   const profileComplete = isProfileComplete(person);
   els.dialogName.textContent = person.name;
-  els.dialogBmi.textContent = `Durum: ${status.label}`;
+  els.dialogBmi.textContent = status.label ? `Durum: ${status.label}` : "Durum: Kilo girilince gösterilecek";
   els.dialogRecommendation.textContent = getRecommendation(person);
   renderCalories(person);
   renderRewards(person);
@@ -702,7 +707,7 @@ function getCatStatus(person) {
   const latestWeight = getLatestWeight(person);
   if (!latestWeight) {
     return {
-      label: "Eksik veri",
+      label: "",
       badge: "Kedi",
       color: "",
       pointer: 0,
@@ -743,8 +748,8 @@ function calculateBmi(person) {
 function getBmiStatus(bmi) {
   if (!bmi) {
     return {
-      label: "Eksik veri",
-      badge: "Durum",
+      label: "",
+      badge: "",
       color: "",
       bmiText: "--",
       pointer: 0,
@@ -772,7 +777,7 @@ function getBmiStatus(bmi) {
 
   return {
     label,
-    badge: "Durum",
+    badge: "",
     color,
     bmiText: formatNumber(bmi),
     pointer: bmiToPointer(bmi),
@@ -939,17 +944,18 @@ function getRewardCardText(rewards) {
   if (rewards.weeklyReward) parts.push(`${rewards.weeklyCount} hafta`);
   if (rewards.normalReward) parts.push(`${rewards.normalDays} normal gün`);
   if (rewards.lossReward) parts.push(`${formatKg(rewards.lossKg)} düşüş`);
-  if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} artış cezası`);
+  if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} kilo alma cezası`);
   return parts.length ? parts.join(" · ") : "Veri girerek ödül başlar";
 }
 
 function getRewardDetailText(rewards) {
   const penaltyText = rewards.gainPenalty ? `-${formatCurrency(rewards.gainPenalty)}` : formatCurrency(0);
-  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.normalDays} normal aralık günü: ${formatCurrency(rewards.normalReward)} · ${formatKg(rewards.lossKg)} düşüş: ${formatCurrency(rewards.lossReward)} · yakınlık bonusu +%${formatNumber(rewards.proximityPercent)}: ${formatCurrency(rewards.proximityBonus)} · ${formatKg(rewards.gainedKg)} artış cezası: ${penaltyText}`;
+  return `Haftalık Kilo Girişi (${rewards.weeklyCount} hafta): ${formatCurrency(rewards.weeklyReward)} · İdeal kiloda kalınan gün (${rewards.normalDays} gün): ${formatCurrency(rewards.normalReward)} · Kilo verme ödülü (${formatKg(rewards.lossKg)}): ${formatCurrency(rewards.lossReward)} · İdeal kiloya yaklaşma bonusu (+%${formatNumber(rewards.proximityPercent)}): ${formatCurrency(rewards.proximityBonus)} · Kilo alma cezası (${formatKg(rewards.gainedKg)}): ${penaltyText}`;
 }
 
 function renderCalories(person) {
   const plan = getCaloriePlan(person);
+  els.calorieTitle.textContent = plan.title;
   els.calorieTarget.textContent = plan.target;
   els.calorieNote.textContent = plan.note;
 }
@@ -958,6 +964,7 @@ function getCaloriePlan(person) {
   const latestWeight = getLatestWeight(person);
   if (isCat(person)) {
     return {
+      title: "Kedi kilo hedefi",
       target: "10 kg altı",
       note: latestWeight && latestWeight.kg < 10 ? "Kedi modu: ideal kabul edildi." : "Kedi modu: 10 kg altı hedeflenir.",
     };
@@ -969,8 +976,9 @@ function getCaloriePlan(person) {
 
   if (!latestWeight || !age || !height || !gender) {
     return {
+      title: "Günlük kalori hedefi",
       target: "--",
-      note: "Kalori hedefi için yaş, boy, cinsiyet ve güncel kilo gerekli.",
+      note: "Hedef için doğum tarihi, boy, cinsiyet ve güncel kilo girilmeli.",
     };
   }
 
@@ -983,22 +991,25 @@ function getCaloriePlan(person) {
 
   if (bmi && bmi < 18.5) {
     return {
+      title: "Kilo almak için günlük kalori hedefi",
       target: `${formatCalories(maintenance + 300)} kcal`,
-      note: `Kilo almak için tahmini hedef. Koruma kalorisi yaklaşık ${formatCalories(maintenance)} kcal.`,
+      note: `Aynı kiloda kalmak için alman gereken kalori yaklaşık ${formatCalories(maintenance)} kcal.`,
     };
   }
 
   if (bmi && bmi > 24.9) {
     const target = Math.max(roundCalories(bmr * 1.1), maintenance - 500);
     return {
+      title: "Kilo vermek için günlük kalori hedefi",
       target: `${formatCalories(target)} kcal`,
-      note: `Kilo vermek için tahmini hedef. Koruma kalorisi yaklaşık ${formatCalories(maintenance)} kcal.`,
+      note: `Aynı kiloda kalmak için alman gereken kalori yaklaşık ${formatCalories(maintenance)} kcal.`,
     };
   }
 
   return {
+    title: "Aynı kiloda kalmak için günlük kalori hedefi",
     target: `${formatCalories(maintenance)} kcal`,
-    note: "İdeal aralık için tahmini koruma kalorisi.",
+    note: "Aynı kiloda kalmak için alman gereken tahmini günlük kalori.",
   };
 }
 
