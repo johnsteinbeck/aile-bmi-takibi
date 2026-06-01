@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aile BMI Takibi</title>
+    <link rel="stylesheet" href="styles.css?v=20260601-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Ortak aile paneli</p>
+          <h1 id="page-title">Aile BMI Takibi</h1>
+        </div>
+        <div class="toolbar" aria-label="Veri araçları">
+          <button class="icon-button" id="exportData" type="button" aria-label="Yedek indir" title="Yedek indir">
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="icon-button" id="importData" type="button" aria-label="Yedek yükle" title="Yedek yükle">
+            <span aria-hidden="true">↑</span>
+          </button>
+          <input id="importFile" type="file" accept="application/json" hidden />
+        </div>
+      </section>
+
+      <section class="summary-strip" aria-label="Özet">
+        <article>
+          <span id="totalPeople">0</span>
+          <p>Kişi</p>
+        </article>
+        <article>
+          <span id="trackedPeople">0</span>
+          <p>Aktif kayıt</p>
+        </article>
+        <article>
+          <span id="healthyPeople">0</span>
+          <p>İdeal aralık</p>
+        </article>
+        <article>
+          <span id="latestEntry">-</span>
+          <p>Son giriş</p>
+        </article>
+      </section>
+
+      <section class="controls" aria-label="Kişi arama">
+        <label class="search-field" for="searchPeople">
+          <span>Arama</span>
+          <input id="searchPeople" type="search" placeholder="İsim ara" />
+        </label>
+      </section>
+
+      <section class="people-grid" id="peopleGrid" aria-label="Aile üyeleri"></section>
+
+      <section class="add-person-section" aria-label="Yeni kişi ekleme">
+        <form class="add-person" id="addPersonForm">
+          <label for="personName">Yeni kişi</label>
+          <div class="input-row">
+            <input id="personName" name="personName" type="text" autocomplete="off" placeholder="İsim" />
+            <button type="submit" aria-label="Kişi ekle" title="Kişi ekle">
+              <span aria-hidden="true">+</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <dialog class="person-dialog" id="personDialog">
+      <form method="dialog" class="dialog-close-form">
+        <button class="icon-button ghost" aria-label="Kapat" title="Kapat">
+          <span aria-hidden="true">×</span>
+        </button>
+      </form>
+
+      <div class="dialog-layout">
+        <section class="profile-panel" aria-labelledby="dialogName">
+          <p class="eyebrow">Kişi kaydı</p>
+          <h2 id="dialogName"></h2>
+          <p class="dialog-bmi" id="dialogBmi">BMI -</p>
+          <div class="meter wide" aria-hidden="true">
+            <div class="meter-track">
+              <span class="meter-pointer" id="dialogPointer"></span>
+            </div>
+          </div>
+          <p class="recommendation" id="dialogRecommendation"></p>
+          <div class="calorie-panel" id="caloriePanel" aria-live="polite">
+            <span>Günlük kalori hedefi</span>
+            <strong id="calorieTarget">--</strong>
+            <p id="calorieNote"></p>
+          </div>
+
+          <form class="profile-form" id="profileForm">
+            <label>
+              Yaş
+              <input id="ageInput" name="age" type="number" inputmode="numeric" min="1" max="120" />
+            </label>
+            <label>
+              Boy (cm)
+              <input id="heightInput" name="height" type="number" inputmode="decimal" min="60" max="240" step="0.1" />
+            </label>
+            <label>
+              Cinsiyet
+              <select id="genderInput" name="gender">
+                <option value="">Seç</option>
+                <option value="kadın">Kadın</option>
+                <option value="erkek">Erkek</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Profili kaydet</button>
+          </form>
+        </section>
+
+        <section class="tracking-panel" aria-label="Kilo takibi">
+          <form class="weight-form" id="weightForm">
+            <label>
+              Tarih
+              <input id="dateInput" name="date" type="date" />
+            </label>
+            <label>
+              Kilo (kg)
+              <input id="weightInput" name="weight" type="number" inputmode="decimal" min="10" max="300" step="0.1" />
+            </label>
+            <button class="primary-button" type="submit">Kilo ekle</button>
+          </form>
+
+          <div class="chart-wrap">
+            <canvas id="weightChart" width="720" height="320" aria-label="Kilo grafiği"></canvas>
+            <p class="empty-chart" id="emptyChart">Grafik için en az bir kilo kaydı gerekir.</p>
+          </div>
+
+          <div class="history-head">
+            <h3>Geçmiş</h3>
+            <button class="text-button danger" id="deletePerson" type="button">Kişiyi sil</button>
+          </div>
+          <ul class="history-list" id="historyList"></ul>
+        </section>
+      </div>
+    </dialog>
+
+    <template id="personCardTemplate">
+      <article class="person-card" tabindex="0">
+        <div class="card-header">
+          <div>
+            <h2></h2>
+            <p class="person-meta"></p>
+          </div>
+          <span class="status-chip"></span>
+        </div>
+        <div class="bmi-line">
+          <span class="bmi-value"></span>
+          <span class="latest-weight"></span>
+        </div>
+        <div class="meter" aria-hidden="true">
+          <div class="meter-track">
+            <span class="meter-pointer"></span>
+          </div>
+        </div>
+        <p class="recommendation"></p>
+      </article>
+    </template>
+
+    <script src="app.js?v=20260601-2"></script>
+  </body>
+</html>
