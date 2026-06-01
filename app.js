@@ -26,6 +26,7 @@ const state = {
 };
 
 let dataStore;
+let birthDateColumnAvailable = true;
 
 const els = {
   grid: document.querySelector("#peopleGrid"),
@@ -38,14 +39,20 @@ const els = {
   personName: document.querySelector("#personName"),
   searchPeople: document.querySelector("#searchPeople"),
   dialog: document.querySelector("#personDialog"),
+  dialogLayout: document.querySelector(".dialog-layout"),
   dialogName: document.querySelector("#dialogName"),
   dialogBmi: document.querySelector("#dialogBmi"),
   dialogPointer: document.querySelector("#dialogPointer"),
   dialogRecommendation: document.querySelector("#dialogRecommendation"),
   calorieTarget: document.querySelector("#calorieTarget"),
   calorieNote: document.querySelector("#calorieNote"),
+  rewardTotal: document.querySelector("#rewardTotal"),
+  rewardBreakdown: document.querySelector("#rewardBreakdown"),
+  profileSummary: document.querySelector("#profileSummary"),
+  profileSummaryText: document.querySelector("#profileSummaryText"),
+  editProfile: document.querySelector("#editProfile"),
   profileForm: document.querySelector("#profileForm"),
-  ageInput: document.querySelector("#ageInput"),
+  birthDateInput: document.querySelector("#birthDateInput"),
   heightInput: document.querySelector("#heightInput"),
   genderInput: document.querySelector("#genderInput"),
   weightForm: document.querySelector("#weightForm"),
@@ -72,6 +79,7 @@ els.deletePerson.addEventListener("click", deleteSelectedPerson);
 els.exportData.addEventListener("click", exportData);
 els.importData.addEventListener("click", () => els.importFile.click());
 els.importFile.addEventListener("change", importData);
+els.editProfile.addEventListener("click", showProfileForm);
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
 
 els.dateInput.value = new Date().toISOString().slice(0, 10);
@@ -82,6 +90,7 @@ function createPerson(name) {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
     name,
     age: "",
+    birthDate: "",
     heightCm: "",
     gender: "",
     weights: [],
@@ -189,18 +198,18 @@ function createSupabaseStore(client) {
       return fetchSupabasePeople(client);
     },
     async createPerson(person) {
-      const { data, error } = await client.from("people").insert({ name: person.name }).select("id,name,age,height_cm,gender").single();
+      const { data, error } = await client.from("people").insert({ name: person.name }).select(getPeopleSelectColumns()).single();
       if (error) throw error;
       return mapSupabasePerson(data);
     },
     async savePerson(person) {
+      if (person.birthDate && !birthDateColumnAvailable) {
+        alert("Doğum tarihi kaydı için Supabase SQL güncellemesini çalıştırmanız gerekiyor.");
+      }
+
       const { error } = await client
         .from("people")
-        .update({
-          age: person.age || null,
-          height_cm: person.heightCm || null,
-          gender: person.gender || null,
-        })
+        .update(getPeoplePayload(person))
         .eq("id", person.id);
       if (error) throw error;
       return person;
@@ -247,13 +256,11 @@ function createSupabaseStore(client) {
         .upsert(
           {
             name: person.name,
-            age: person.age || null,
-            height_cm: person.heightCm || null,
-            gender: person.gender || null,
+            ...getPeoplePayload(person),
           },
           { onConflict: "name" },
         )
-        .select("id,name,age,height_cm,gender")
+        .select(getPeopleSelectColumns())
         .single();
       if (error) throw error;
       return mapSupabasePerson(data);
@@ -270,12 +277,43 @@ async function ensureDefaultPeople(client) {
 }
 
 async function fetchSupabasePeople(client) {
-  const { data, error } = await client
-    .from("people")
-    .select("id,name,age,height_cm,gender,weight_entries(id,entry_date,kg)")
-    .order("name", { ascending: true });
+  let response = await client.from("people").select(getPeopleSelectColumns()).order("name", { ascending: true });
+
+  if (response.error && isMissingBirthDateError(response.error)) {
+    birthDateColumnAvailable = false;
+    setStorageStatus("Ortak DB: SQL güncellemesi gerekli", "online");
+    response = await client.from("people").select(getPeopleSelectColumns()).order("name", { ascending: true });
+  }
+
+  const { data, error } = response;
   if (error) throw error;
   return data.map(mapSupabasePerson);
+}
+
+function getPeopleSelectColumns() {
+  const birthDateColumn = birthDateColumnAvailable ? "birth_date," : "";
+  return `id,name,age,${birthDateColumn}height_cm,gender,weight_entries(id,entry_date,kg)`;
+}
+
+function getPeoplePayload(person) {
+  const payload = {
+    height_cm: person.heightCm || null,
+    gender: person.gender || null,
+  };
+
+  if (birthDateColumnAvailable) {
+    payload.birth_date = person.birthDate || null;
+    payload.age = person.birthDate ? null : person.age || null;
+  } else {
+    payload.age = person.age || null;
+  }
+
+  return payload;
+}
+
+function isMissingBirthDateError(error) {
+  const message = `${error.message || ""} ${error.details || ""} ${error.hint || ""}`;
+  return message.includes("birth_date") && (message.includes("column") || message.includes("schema cache"));
 }
 
 function mapSupabasePerson(row) {
@@ -283,6 +321,7 @@ function mapSupabasePerson(row) {
     id: row.id,
     name: row.name,
     age: row.age ?? "",
+    birthDate: row.birth_date ?? "",
     heightCm: row.height_cm ?? "",
     gender: row.gender ?? "",
     weights: (row.weight_entries || []).map(mapSupabaseWeight).sort((a, b) => a.date.localeCompare(b.date)),
@@ -332,7 +371,8 @@ async function saveProfile(event) {
   const person = getSelectedPerson();
   if (!person) return;
 
-  person.age = numberOrEmpty(els.ageInput.value);
+  person.birthDate = els.birthDateInput.value;
+  person.age = person.birthDate ? "" : person.age;
   person.heightCm = numberOrEmpty(els.heightInput.value);
   person.gender = els.genderInput.value;
 
@@ -420,13 +460,14 @@ function renderPeople() {
 
   const people = state.people
     .filter((person) => person.name.toLocaleLowerCase("tr-TR").includes(state.query))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+    .sort(comparePeople);
 
   people.forEach((person) => {
     const fragment = els.template.content.cloneNode(true);
     const card = fragment.querySelector(".person-card");
     const status = getBmiStatus(calculateBmi(person));
     const latestWeight = getLatestWeight(person);
+    const rewards = getRewardSummary(person);
     const pointer = fragment.querySelector(".meter-pointer");
 
     card.dataset.id = person.id;
@@ -437,6 +478,8 @@ function renderPeople() {
     card.querySelector(".bmi-value").textContent = status.bmiText;
     card.querySelector(".latest-weight").textContent = latestWeight ? `${formatNumber(latestWeight.kg)} kg` : "Kilo yok";
     card.querySelector(".recommendation").textContent = getRecommendation(person);
+    card.querySelector(".reward-total").textContent = `${formatCurrency(rewards.total)} kazandı`;
+    card.querySelector(".reward-detail").textContent = getRewardCardText(rewards);
     setPointer(pointer, status);
 
     card.addEventListener("click", () => openPerson(person.id));
@@ -450,6 +493,16 @@ function renderPeople() {
   });
 }
 
+function comparePeople(a, b) {
+  const ageA = calculateAge(a);
+  const ageB = calculateAge(b);
+
+  if (ageA !== null && ageB !== null && ageA !== ageB) return ageB - ageA;
+  if (ageA !== null && ageB === null) return -1;
+  if (ageA === null && ageB !== null) return 1;
+  return a.name.localeCompare(b.name, "tr");
+}
+
 function openPerson(id) {
   state.selectedId = id;
   const person = getSelectedPerson();
@@ -461,17 +514,30 @@ function openPerson(id) {
 
 function renderDialog(person) {
   const status = getBmiStatus(calculateBmi(person));
+  const profileComplete = isProfileComplete(person);
   els.dialogName.textContent = person.name;
   els.dialogBmi.textContent = `BMI ${status.bmiText} · ${status.label}`;
   els.dialogRecommendation.textContent = getRecommendation(person);
   renderCalories(person);
-  els.ageInput.value = person.age ?? "";
+  renderRewards(person);
+  els.dialogLayout.classList.toggle("profile-complete-mode", profileComplete);
+  els.profileForm.hidden = profileComplete;
+  els.profileSummary.hidden = !profileComplete;
+  els.profileSummaryText.textContent = getProfileSummary(person);
+  els.birthDateInput.value = person.birthDate ?? "";
   els.heightInput.value = person.heightCm ?? "";
   els.genderInput.value = person.gender ?? "";
   els.dateInput.value = els.dateInput.value || new Date().toISOString().slice(0, 10);
   setPointer(els.dialogPointer, status);
   renderHistory(person);
   renderChart(person);
+}
+
+function showProfileForm() {
+  els.profileForm.hidden = false;
+  els.profileSummary.hidden = true;
+  els.dialogLayout.classList.remove("profile-complete-mode");
+  els.birthDateInput.focus();
 }
 
 function renderHistory(person) {
@@ -679,6 +745,70 @@ function getRecommendation(person) {
   return "İdeal BMI aralığında.";
 }
 
+function renderRewards(person) {
+  const rewards = getRewardSummary(person);
+  els.rewardTotal.textContent = formatCurrency(rewards.total);
+  els.rewardBreakdown.textContent = getRewardDetailText(rewards);
+}
+
+function getRewardSummary(person) {
+  const weeklyCount = getEntryWeekCount(person);
+  const weeklyReward = weeklyCount * 50;
+  const lossKg = getRewardedLossKg(person);
+  const lossReward = lossKg * 500;
+
+  return {
+    weeklyCount,
+    weeklyReward,
+    lossKg,
+    lossReward,
+    total: weeklyReward + lossReward,
+  };
+}
+
+function getEntryWeekCount(person) {
+  return new Set(person.weights.map((entry) => getWeekKey(entry.date))).size;
+}
+
+function getRewardedLossKg(person) {
+  const height = Number(person.heightCm);
+  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (!height || entries.length < 2) return 0;
+
+  let peak = entries[0].kg;
+  let peakWasOverTarget = calculateBmiForWeight(peak, height) > 24.9;
+  let maxRewardedDrop = 0;
+
+  entries.forEach((entry) => {
+    if (entry.kg > peak) {
+      peak = entry.kg;
+      peakWasOverTarget = calculateBmiForWeight(peak, height) > 24.9;
+    }
+
+    if (peakWasOverTarget) {
+      maxRewardedDrop = Math.max(maxRewardedDrop, peak - entry.kg);
+    }
+  });
+
+  return Math.floor(Math.max(0, maxRewardedDrop));
+}
+
+function calculateBmiForWeight(weight, heightCm) {
+  const meters = Number(heightCm) / 100;
+  return Number(weight) / (meters * meters);
+}
+
+function getRewardCardText(rewards) {
+  const parts = [];
+  if (rewards.weeklyReward) parts.push(`${rewards.weeklyCount} hafta`);
+  if (rewards.lossReward) parts.push(`${rewards.lossKg} kg düşüş`);
+  return parts.length ? parts.join(" · ") : "Veri girerek ödül başlar";
+}
+
+function getRewardDetailText(rewards) {
+  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.lossKg} kg düşüş: ${formatCurrency(rewards.lossReward)}`;
+}
+
 function renderCalories(person) {
   const plan = getCaloriePlan(person);
   els.calorieTarget.textContent = plan.target;
@@ -687,7 +817,7 @@ function renderCalories(person) {
 
 function getCaloriePlan(person) {
   const latestWeight = getLatestWeight(person);
-  const age = Number(person.age);
+  const age = calculateAge(person);
   const height = Number(person.heightCm);
   const gender = person.gender;
 
@@ -733,10 +863,39 @@ function getLatestWeight(person) {
 
 function getPersonMeta(person) {
   const parts = [];
-  if (person.age) parts.push(`${person.age} yaş`);
+  const age = calculateAge(person);
+  if (age !== null) parts.push(`${age} yaş`);
   if (person.heightCm) parts.push(`${formatNumber(person.heightCm)} cm`);
   if (person.gender) parts.push(capitalize(person.gender));
   return parts.length ? parts.join(" · ") : "Profil eksik";
+}
+
+function isProfileComplete(person) {
+  return Boolean(person.birthDate && person.heightCm && person.gender);
+}
+
+function getProfileSummary(person) {
+  const age = calculateAge(person);
+  const parts = [];
+  if (person.birthDate) parts.push(`${formatLongDate(person.birthDate)} doğumlu`);
+  if (age !== null) parts.push(`${age} yaş`);
+  if (person.heightCm) parts.push(`${formatNumber(person.heightCm)} cm`);
+  if (person.gender) parts.push(capitalize(person.gender));
+  return parts.join(" · ");
+}
+
+function calculateAge(person) {
+  if (person.birthDate) {
+    const birthDate = new Date(`${person.birthDate}T12:00:00`);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const birthdayThisYear = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate(), 12);
+    if (today < birthdayThisYear) age -= 1;
+    return Number.isFinite(age) && age >= 0 ? age : null;
+  }
+
+  const legacyAge = Number(person.age);
+  return Number.isFinite(legacyAge) && legacyAge > 0 ? legacyAge : null;
 }
 
 function numberOrEmpty(value) {
@@ -758,6 +917,13 @@ function formatCalories(value) {
   }).format(value);
 }
 
+function formatCurrency(value) {
+  return `${new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(value)} TL`;
+}
+
 function roundCalories(value) {
   return Math.round(value / 10) * 10;
 }
@@ -775,6 +941,16 @@ function formatLongDate(value) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function getWeekKey(value) {
+  const date = new Date(`${value}T12:00:00`);
+  const temp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = temp.getUTCDay() || 7;
+  temp.setUTCDate(temp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((temp - yearStart) / 86400000 + 1) / 7);
+  return `${temp.getUTCFullYear()}-${String(week).padStart(2, "0")}`;
 }
 
 function capitalize(value) {

@@ -4,10 +4,13 @@ create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   age integer,
+  birth_date date,
   height_cm numeric(5, 2),
   gender text check (gender in ('kadın', 'erkek') or gender is null),
   created_at timestamptz not null default now()
 );
+
+alter table public.people add column if not exists birth_date date;
 
 create table if not exists public.weight_entries (
   id uuid primary key default gen_random_uuid(),
