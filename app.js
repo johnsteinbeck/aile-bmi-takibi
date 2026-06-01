@@ -754,15 +754,24 @@ function renderRewards(person) {
 function getRewardSummary(person) {
   const weeklyCount = getEntryWeekCount(person);
   const weeklyReward = weeklyCount * 50;
-  const lossKg = getRewardedLossKg(person);
-  const lossReward = lossKg * 500;
+  const normalDays = getNormalBmiDays(person);
+  const normalReward = normalDays * 3;
+  const loss = getWeightLossReward(person);
+  const gainPenalty = getWeightGainPenalty(person);
+  const rawTotal = weeklyReward + normalReward + loss.baseReward + loss.proximityBonus - gainPenalty.amount;
 
   return {
     weeklyCount,
     weeklyReward,
-    lossKg,
-    lossReward,
-    total: weeklyReward + lossReward,
+    normalDays,
+    normalReward,
+    lossKg: loss.kg,
+    lossReward: loss.baseReward,
+    proximityPercent: loss.proximityPercent,
+    proximityBonus: loss.proximityBonus,
+    gainedKg: gainPenalty.kg,
+    gainPenalty: gainPenalty.amount,
+    total: Math.max(0, rawTotal),
   };
 }
 
@@ -770,27 +779,69 @@ function getEntryWeekCount(person) {
   return new Set(person.weights.map((entry) => getWeekKey(entry.date))).size;
 }
 
-function getRewardedLossKg(person) {
+function getWeightLossReward(person) {
   const height = Number(person.heightCm);
   const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (!height || entries.length < 2) return 0;
+  if (!height || entries.length < 2) {
+    return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
+  }
 
-  let peak = entries[0].kg;
-  let peakWasOverTarget = calculateBmiForWeight(peak, height) > 24.9;
-  let maxRewardedDrop = 0;
+  const first = entries[0];
+  const latest = entries[entries.length - 1];
+  const startBmi = calculateBmiForWeight(first.kg, height);
+  if (startBmi <= 24.9) {
+    return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
+  }
 
-  entries.forEach((entry) => {
-    if (entry.kg > peak) {
-      peak = entry.kg;
-      peakWasOverTarget = calculateBmiForWeight(peak, height) > 24.9;
-    }
+  const lossKg = Math.max(0, first.kg - latest.kg);
+  const latestBmi = calculateBmiForWeight(latest.kg, height);
+  const distanceAtStart = Math.max(0, startBmi - 24.9);
+  const distanceNow = Math.max(0, latestBmi - 24.9);
+  const progress = distanceAtStart ? Math.min(1, Math.max(0, (distanceAtStart - distanceNow) / distanceAtStart)) : 0;
+  const proximityPercent = progress * 10;
+  const baseReward = lossKg * 250;
+  const proximityBonus = baseReward * (proximityPercent / 100);
 
-    if (peakWasOverTarget) {
-      maxRewardedDrop = Math.max(maxRewardedDrop, peak - entry.kg);
-    }
-  });
+  return {
+    kg: lossKg,
+    baseReward,
+    proximityPercent,
+    proximityBonus,
+  };
+}
 
-  return Math.floor(Math.max(0, maxRewardedDrop));
+function getWeightGainPenalty(person) {
+  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (entries.length < 2) return { kg: 0, amount: 0 };
+
+  const gainedKg = entries.reduce((total, entry, index) => {
+    if (index === 0) return total;
+    const previous = entries[index - 1];
+    return total + Math.max(0, entry.kg - previous.kg);
+  }, 0);
+
+  return {
+    kg: gainedKg,
+    amount: gainedKg * 50,
+  };
+}
+
+function getNormalBmiDays(person) {
+  const height = Number(person.heightCm);
+  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (!height || entries.length === 0) return 0;
+
+  const today = getTodayDayNumber();
+  const tomorrow = today + 1;
+
+  return entries.reduce((total, entry, index) => {
+    if (!isNormalBmi(calculateBmiForWeight(entry.kg, height))) return total;
+
+    const start = dateToDayNumber(entry.date);
+    const next = entries[index + 1] ? dateToDayNumber(entries[index + 1].date) : tomorrow;
+    const end = Math.min(next, tomorrow);
+    return total + Math.max(0, end - Math.max(start, 0));
+  }, 0);
 }
 
 function calculateBmiForWeight(weight, heightCm) {
@@ -798,15 +849,22 @@ function calculateBmiForWeight(weight, heightCm) {
   return Number(weight) / (meters * meters);
 }
 
+function isNormalBmi(bmi) {
+  return bmi >= 18.5 && bmi <= 24.9;
+}
+
 function getRewardCardText(rewards) {
   const parts = [];
   if (rewards.weeklyReward) parts.push(`${rewards.weeklyCount} hafta`);
-  if (rewards.lossReward) parts.push(`${rewards.lossKg} kg düşüş`);
+  if (rewards.normalReward) parts.push(`${rewards.normalDays} normal gün`);
+  if (rewards.lossReward) parts.push(`${formatKg(rewards.lossKg)} düşüş`);
+  if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} artış cezası`);
   return parts.length ? parts.join(" · ") : "Veri girerek ödül başlar";
 }
 
 function getRewardDetailText(rewards) {
-  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.lossKg} kg düşüş: ${formatCurrency(rewards.lossReward)}`;
+  const penaltyText = rewards.gainPenalty ? `-${formatCurrency(rewards.gainPenalty)}` : formatCurrency(0);
+  return `${rewards.weeklyCount} haftalık veri: ${formatCurrency(rewards.weeklyReward)} · ${rewards.normalDays} normal BMI günü: ${formatCurrency(rewards.normalReward)} · ${formatKg(rewards.lossKg)} düşüş: ${formatCurrency(rewards.lossReward)} · yakınlık bonusu +%${formatNumber(rewards.proximityPercent)}: ${formatCurrency(rewards.proximityBonus)} · ${formatKg(rewards.gainedKg)} artış cezası: ${penaltyText}`;
 }
 
 function renderCalories(person) {
@@ -910,6 +968,10 @@ function formatNumber(value) {
   }).format(value);
 }
 
+function formatKg(value) {
+  return `${formatNumber(value)} kg`;
+}
+
 function formatCalories(value) {
   return new Intl.NumberFormat("tr-TR", {
     maximumFractionDigits: 0,
@@ -951,6 +1013,16 @@ function getWeekKey(value) {
   const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
   const week = Math.ceil(((temp - yearStart) / 86400000 + 1) / 7);
   return `${temp.getUTCFullYear()}-${String(week).padStart(2, "0")}`;
+}
+
+function dateToDayNumber(value) {
+  const date = new Date(`${value}T12:00:00`);
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
+}
+
+function getTodayDayNumber() {
+  const today = new Date();
+  return Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000);
 }
 
 function capitalize(value) {
