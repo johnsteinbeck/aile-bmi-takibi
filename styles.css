@@ -115,6 +115,32 @@ h1 {
   box-shadow: none;
 }
 
+.storage-status {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.storage-status.online {
+  border-color: rgba(53, 173, 114, 0.34);
+  background: rgba(53, 173, 114, 0.13);
+  color: #14633d;
+}
+
+.storage-status.local {
+  border-color: rgba(224, 167, 46, 0.34);
+  background: rgba(224, 167, 46, 0.13);
+  color: #805a06;
+}
+
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -581,6 +607,7 @@ canvas {
 
   .toolbar {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 

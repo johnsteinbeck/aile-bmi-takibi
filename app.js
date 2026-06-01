@@ -20,10 +20,12 @@ const DEFAULT_PEOPLE = [
 ];
 
 const state = {
-  people: loadPeople(),
+  people: [],
   selectedId: null,
   query: "",
 };
+
+let dataStore;
 
 const els = {
   grid: document.querySelector("#peopleGrid"),
@@ -56,6 +58,7 @@ const els = {
   exportData: document.querySelector("#exportData"),
   importData: document.querySelector("#importData"),
   importFile: document.querySelector("#importFile"),
+  storageStatus: document.querySelector("#storageStatus"),
 };
 
 els.addPersonForm.addEventListener("submit", addPerson);
@@ -72,24 +75,7 @@ els.importFile.addEventListener("change", importData);
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
 
 els.dateInput.value = new Date().toISOString().slice(0, 10);
-render();
-
-function loadPeople() {
-  const fallback = DEFAULT_PEOPLE.map((name) => createPerson(name));
-
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!Array.isArray(saved) || saved.length === 0) return fallback;
-
-    return saved.map((person) => ({
-      ...createPerson(person.name || "İsimsiz"),
-      ...person,
-      weights: Array.isArray(person.weights) ? person.weights : [],
-    }));
-  } catch {
-    return fallback;
-  }
-}
+init();
 
 function createPerson(name) {
   return {
@@ -102,11 +88,222 @@ function createPerson(name) {
   };
 }
 
-function savePeople() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.people));
+async function init() {
+  dataStore = await createDataStore();
+  setStorageStatus(dataStore.label, dataStore.mode);
+
+  try {
+    state.people = await dataStore.loadPeople();
+  } catch (error) {
+    console.error(error);
+    alert("Veriler yüklenemedi. Bağlantı ayarlarını kontrol edin.");
+    state.people = [];
+  }
+
+  render();
 }
 
-function addPerson(event) {
+async function createDataStore() {
+  const config = window.BMI_APP_CONFIG || {};
+  const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+
+  if (!hasSupabaseConfig) {
+    return createLocalStore();
+  }
+
+  try {
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    const client = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    return createSupabaseStore(client);
+  } catch (error) {
+    console.error(error);
+    alert("Supabase bağlantısı kurulamadı. Site cihaz içi kayıt modunda açıldı.");
+    return createLocalStore();
+  }
+}
+
+function createLocalStore() {
+  return {
+    mode: "local",
+    label: "Cihaz içi kayıt",
+    async loadPeople() {
+      const fallback = DEFAULT_PEOPLE.map((name) => createPerson(name));
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!Array.isArray(saved) || saved.length === 0) return fallback;
+
+        return saved.map((person) => ({
+          ...createPerson(person.name || "İsimsiz"),
+          ...person,
+          weights: Array.isArray(person.weights) ? person.weights : [],
+        }));
+      } catch {
+        return fallback;
+      }
+    },
+    async createPerson(person) {
+      saveLocalPeople([...state.people, person]);
+      return person;
+    },
+    async savePerson(person) {
+      const people = state.people.map((item) => (item.id === person.id ? person : item));
+      saveLocalPeople(people);
+      return person;
+    },
+    async deletePerson(id) {
+      saveLocalPeople(state.people.filter((person) => person.id !== id));
+    },
+    async upsertWeight(personId, entry) {
+      const person = state.people.find((item) => item.id === personId);
+      if (!person) return entry;
+      const existing = person.weights.find((item) => item.date === entry.date);
+      if (existing) existing.kg = entry.kg;
+      else person.weights.push(entry);
+      saveLocalPeople(state.people);
+      return entry;
+    },
+    async deleteWeight(personId, entry) {
+      const person = state.people.find((item) => item.id === personId);
+      if (!person) return;
+      person.weights = person.weights.filter((item) => item.date !== entry.date);
+      saveLocalPeople(state.people);
+    },
+    async replaceAll(people) {
+      saveLocalPeople(people);
+      return people;
+    },
+  };
+}
+
+function saveLocalPeople(people) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+}
+
+function createSupabaseStore(client) {
+  return {
+    mode: "online",
+    label: "Ortak veritabanı",
+    async loadPeople() {
+      await ensureDefaultPeople(client);
+      return fetchSupabasePeople(client);
+    },
+    async createPerson(person) {
+      const { data, error } = await client.from("people").insert({ name: person.name }).select("id,name,age,height_cm,gender").single();
+      if (error) throw error;
+      return mapSupabasePerson(data);
+    },
+    async savePerson(person) {
+      const { error } = await client
+        .from("people")
+        .update({
+          age: person.age || null,
+          height_cm: person.heightCm || null,
+          gender: person.gender || null,
+        })
+        .eq("id", person.id);
+      if (error) throw error;
+      return person;
+    },
+    async deletePerson(id) {
+      const { error } = await client.from("people").delete().eq("id", id);
+      if (error) throw error;
+    },
+    async upsertWeight(personId, entry) {
+      const { data, error } = await client
+        .from("weight_entries")
+        .upsert(
+          {
+            person_id: personId,
+            entry_date: entry.date,
+            kg: entry.kg,
+          },
+          { onConflict: "person_id,entry_date" },
+        )
+        .select("id,entry_date,kg")
+        .single();
+      if (error) throw error;
+      return mapSupabaseWeight(data);
+    },
+    async deleteWeight(personId, entry) {
+      const query = client.from("weight_entries").delete();
+      const { error } = entry.id
+        ? await query.eq("id", entry.id)
+        : await query.eq("person_id", personId).eq("entry_date", entry.date);
+      if (error) throw error;
+    },
+    async replaceAll(people) {
+      for (const person of people) {
+        const savedPerson = await this.createPersonIfMissing(person);
+        for (const entry of person.weights || []) {
+          await this.upsertWeight(savedPerson.id, entry);
+        }
+      }
+      return fetchSupabasePeople(client);
+    },
+    async createPersonIfMissing(person) {
+      const { data, error } = await client
+        .from("people")
+        .upsert(
+          {
+            name: person.name,
+            age: person.age || null,
+            height_cm: person.heightCm || null,
+            gender: person.gender || null,
+          },
+          { onConflict: "name" },
+        )
+        .select("id,name,age,height_cm,gender")
+        .single();
+      if (error) throw error;
+      return mapSupabasePerson(data);
+    },
+  };
+}
+
+async function ensureDefaultPeople(client) {
+  const { error } = await client.from("people").upsert(DEFAULT_PEOPLE.map((name) => ({ name })), {
+    onConflict: "name",
+    ignoreDuplicates: true,
+  });
+  if (error) throw error;
+}
+
+async function fetchSupabasePeople(client) {
+  const { data, error } = await client
+    .from("people")
+    .select("id,name,age,height_cm,gender,weight_entries(id,entry_date,kg)")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data.map(mapSupabasePerson);
+}
+
+function mapSupabasePerson(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    age: row.age ?? "",
+    heightCm: row.height_cm ?? "",
+    gender: row.gender ?? "",
+    weights: (row.weight_entries || []).map(mapSupabaseWeight).sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+function mapSupabaseWeight(row) {
+  return {
+    id: row.id,
+    date: row.entry_date,
+    kg: Number(row.kg),
+  };
+}
+
+function setStorageStatus(label, mode) {
+  els.storageStatus.textContent = label;
+  els.storageStatus.classList.toggle("online", mode === "online");
+  els.storageStatus.classList.toggle("local", mode === "local");
+}
+
+async function addPerson(event) {
   event.preventDefault();
   const name = els.personName.value.trim();
   if (!name) return;
@@ -117,16 +314,20 @@ function addPerson(event) {
     return;
   }
 
-  const person = createPerson(name);
-  state.people.push(person);
-  state.selectedId = person.id;
-  els.personName.value = "";
-  savePeople();
-  render();
-  openPerson(person.id);
+  try {
+    const person = await dataStore.createPerson(createPerson(name));
+    state.people.push(person);
+    state.selectedId = person.id;
+    els.personName.value = "";
+    render();
+    openPerson(person.id);
+  } catch (error) {
+    console.error(error);
+    alert("Kişi eklenemedi. Bağlantıyı ve veritabanı izinlerini kontrol edin.");
+  }
 }
 
-function saveProfile(event) {
+async function saveProfile(event) {
   event.preventDefault();
   const person = getSelectedPerson();
   if (!person) return;
@@ -134,12 +335,18 @@ function saveProfile(event) {
   person.age = numberOrEmpty(els.ageInput.value);
   person.heightCm = numberOrEmpty(els.heightInput.value);
   person.gender = els.genderInput.value;
-  savePeople();
-  render();
-  renderDialog(person);
+
+  try {
+    await dataStore.savePerson(person);
+    render();
+    renderDialog(person);
+  } catch (error) {
+    console.error(error);
+    alert("Profil kaydedilemedi. Bağlantıyı ve veritabanı izinlerini kontrol edin.");
+  }
 }
 
-function addWeight(event) {
+async function addWeight(event) {
   event.preventDefault();
   const person = getSelectedPerson();
   if (!person) return;
@@ -148,32 +355,43 @@ function addWeight(event) {
   const kg = Number.parseFloat(els.weightInput.value.replace(",", "."));
   if (!Number.isFinite(kg) || kg <= 0) return;
 
-  const existing = person.weights.find((entry) => entry.date === date);
-  if (existing) {
-    existing.kg = kg;
-  } else {
-    person.weights.push({ date, kg });
-  }
+  try {
+    const savedEntry = await dataStore.upsertWeight(person.id, { date, kg });
+    const existing = person.weights.find((entry) => entry.date === date);
+    if (existing) {
+      existing.id = savedEntry.id || existing.id;
+      existing.kg = savedEntry.kg;
+    } else {
+      person.weights.push(savedEntry);
+    }
 
-  person.weights.sort((a, b) => a.date.localeCompare(b.date));
-  els.weightInput.value = "";
-  savePeople();
-  render();
-  renderDialog(person);
+    person.weights.sort((a, b) => a.date.localeCompare(b.date));
+    els.weightInput.value = "";
+    render();
+    renderDialog(person);
+  } catch (error) {
+    console.error(error);
+    alert("Kilo kaydı eklenemedi. Bağlantıyı ve veritabanı izinlerini kontrol edin.");
+  }
 }
 
-function deleteSelectedPerson() {
+async function deleteSelectedPerson() {
   const person = getSelectedPerson();
   if (!person) return;
 
   const ok = confirm(`${person.name} kaydı silinsin mi?`);
   if (!ok) return;
 
-  state.people = state.people.filter((item) => item.id !== person.id);
-  state.selectedId = null;
-  savePeople();
-  els.dialog.close();
-  render();
+  try {
+    await dataStore.deletePerson(person.id);
+    state.people = state.people.filter((item) => item.id !== person.id);
+    state.selectedId = null;
+    els.dialog.close();
+    render();
+  } catch (error) {
+    console.error(error);
+    alert("Kişi silinemedi. Bağlantıyı ve veritabanı izinlerini kontrol edin.");
+  }
 }
 
 function render() {
@@ -280,11 +498,16 @@ function renderHistory(person) {
     remove.title = "Kaydı sil";
     remove.setAttribute("aria-label", `${formatLongDate(entry.date)} kaydını sil`);
     remove.textContent = "×";
-    remove.addEventListener("click", () => {
-      person.weights = person.weights.filter((itemEntry) => itemEntry.date !== entry.date);
-      savePeople();
-      render();
-      renderDialog(person);
+    remove.addEventListener("click", async () => {
+      try {
+        await dataStore.deleteWeight(person.id, entry);
+        person.weights = person.weights.filter((itemEntry) => itemEntry.date !== entry.date);
+        render();
+        renderDialog(person);
+      } catch (error) {
+        console.error(error);
+        alert("Kilo kaydı silinemedi. Bağlantıyı ve veritabanı izinlerini kontrol edin.");
+      }
     });
 
     item.append(date, weight, remove);
@@ -581,12 +804,12 @@ async function importData(event) {
     const data = JSON.parse(text);
     if (!Array.isArray(data)) throw new Error("Invalid file");
 
-    state.people = data.map((person) => ({
+    const normalizedPeople = data.map((person) => ({
       ...createPerson(person.name || "İsimsiz"),
       ...person,
       weights: Array.isArray(person.weights) ? person.weights : [],
     }));
-    savePeople();
+    state.people = await dataStore.replaceAll(normalizedPeople);
     render();
   } catch {
     alert("Yedek dosyası okunamadı.");
