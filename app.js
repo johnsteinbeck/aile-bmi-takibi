@@ -19,6 +19,16 @@ const DEFAULT_PEOPLE = [
   "Kerem",
 ];
 
+const ADULT_BMI = {
+  severeThin: 16,
+  moderateThin: 17,
+  normalLow: 18.5,
+  normalHigh: 25,
+  overweightHigh: 30,
+  obeseClass2: 35,
+  obeseClass3: 40,
+};
+
 const state = {
   people: [],
   selectedId: null,
@@ -658,8 +668,9 @@ function renderChart(person) {
     context.fillRect(padding.left, idealY, chartWidth, padding.top + chartHeight - idealY);
   } else if (person.heightCm) {
     const h = Number(person.heightCm) / 100;
-    const lowTarget = 18.5 * h * h;
-    const highTarget = 24.9 * h * h;
+    const idealRange = getIdealBmiRange(person, entries[entries.length - 1]?.date);
+    const lowTarget = idealRange.low * h * h;
+    const highTarget = idealRange.high * h * h;
     const lowY = yFor(lowTarget);
     const highY = yFor(highTarget);
     context.fillStyle = "rgba(53, 173, 114, 0.08)";
@@ -700,7 +711,13 @@ function renderChart(person) {
 
 function getHealthStatus(person) {
   if (isCat(person)) return getCatStatus(person);
-  return getBmiStatus(calculateBmi(person));
+  const bmi = calculateBmi(person);
+  if (!bmi) return getEmptyStatus();
+
+  const pediatricThresholds = getPediatricBmiThresholds(person, getLatestWeight(person)?.date);
+  if (pediatricThresholds) return getPediatricBmiStatus(bmi, pediatricThresholds);
+
+  return getAdultBmiStatus(bmi);
 }
 
 function getCatStatus(person) {
@@ -720,7 +737,7 @@ function getCatStatus(person) {
       label: "İdeal",
       badge: "Kedi",
       color: "green",
-      pointer: Math.min(38.1, Math.max(17.3, 17.3 + (latestWeight.kg / 10) * 20.8)),
+      pointer: Math.min(42.3, Math.max(17.3, 17.3 + (latestWeight.kg / 10) * 25)),
       pointerColor: "#35ad72",
     };
   }
@@ -731,8 +748,8 @@ function getCatStatus(person) {
     color: latestWeight.kg >= 12 ? "red" : "yellow",
     pointer:
       latestWeight.kg >= 12
-        ? Math.min(100, 57.3 + (latestWeight.kg - 12) * 8)
-        : Math.min(57.3, 38.1 + ((latestWeight.kg - 10) / 2) * 19.2),
+        ? Math.min(100, 61.5 + (latestWeight.kg - 12) * 8)
+        : Math.min(61.5, 42.3 + ((latestWeight.kg - 10) / 2) * 19.2),
     pointerColor: latestWeight.kg >= 12 ? "#d95252" : "#e0a72e",
   };
 }
@@ -745,42 +762,92 @@ function calculateBmi(person) {
   return latestWeight.kg / (meters * meters);
 }
 
-function getBmiStatus(bmi) {
-  if (!bmi) {
-    return {
-      label: "",
-      badge: "",
-      color: "",
-      bmiText: "--",
-      pointer: 0,
-      pointerColor: "#687874",
-    };
-  }
+function getEmptyStatus() {
+  return {
+    label: "",
+    badge: "",
+    color: "",
+    pointer: 0,
+    pointerColor: "#687874",
+  };
+}
 
+function getAdultBmiStatus(bmi) {
   let label = "İdeal";
   let color = "green";
   let pointerColor = "#35ad72";
 
-  if (bmi < 18.5) {
-    label = "Zayıf";
+  if (bmi < ADULT_BMI.severeThin) {
+    label = "Çok zayıf";
     color = "yellow";
     pointerColor = "#e0a72e";
-  } else if (bmi > 29.9) {
-    label = "Obezite";
-    color = "red";
-    pointerColor = "#d95252";
-  } else if (bmi > 24.9) {
+  } else if (bmi < ADULT_BMI.moderateThin) {
+    label = "Orta zayıf";
+    color = "yellow";
+    pointerColor = "#e0a72e";
+  } else if (bmi < ADULT_BMI.normalLow) {
+    label = "Hafif zayıf";
+    color = "yellow";
+    pointerColor = "#e0a72e";
+  } else if (bmi < ADULT_BMI.normalHigh) {
+    label = "İdeal";
+    color = "green";
+    pointerColor = "#35ad72";
+  } else if (bmi < ADULT_BMI.overweightHigh) {
     label = "Fazla kilo";
     color = "yellow";
     pointerColor = "#e0a72e";
+  } else if (bmi < ADULT_BMI.obeseClass2) {
+    label = "Obezite I";
+    color = "red";
+    pointerColor = "#d95252";
+  } else if (bmi <= ADULT_BMI.obeseClass3) {
+    label = "Obezite II";
+    color = "red";
+    pointerColor = "#d95252";
+  } else {
+    label = "Obezite III";
+    color = "red";
+    pointerColor = "#d95252";
   }
 
   return {
     label,
     badge: "",
     color,
-    bmiText: formatNumber(bmi),
     pointer: bmiToPointer(bmi),
+    pointerColor,
+  };
+}
+
+function getPediatricBmiStatus(bmi, thresholds) {
+  let label = "İdeal";
+  let color = "green";
+  let pointerColor = "#35ad72";
+
+  if (bmi < thresholds.p5) {
+    label = "Zayıf";
+    color = "yellow";
+    pointerColor = "#e0a72e";
+  } else if (bmi < thresholds.p85) {
+    label = "İdeal";
+    color = "green";
+    pointerColor = "#35ad72";
+  } else if (bmi < thresholds.p95) {
+    label = "Fazla kilo";
+    color = "yellow";
+    pointerColor = "#e0a72e";
+  } else {
+    label = "Obezite";
+    color = "red";
+    pointerColor = "#d95252";
+  }
+
+  return {
+    label,
+    badge: "",
+    color,
+    pointer: pediatricBmiToPointer(bmi, thresholds),
     pointerColor,
   };
 }
@@ -790,6 +857,19 @@ function bmiToPointer(bmi) {
   const max = 40;
   const value = Math.min(max, Math.max(min, bmi));
   return ((value - min) / (max - min)) * 100;
+}
+
+function pediatricBmiToPointer(bmi, thresholds) {
+  if (bmi < thresholds.p5) return scaleBetween(bmi, thresholds.p5 - 4, thresholds.p5, 0, 17.3);
+  if (bmi < thresholds.p85) return scaleBetween(bmi, thresholds.p5, thresholds.p85, 17.3, 42.3);
+  if (bmi < thresholds.p95) return scaleBetween(bmi, thresholds.p85, thresholds.p95, 42.3, 61.5);
+  return scaleBetween(bmi, thresholds.p95, thresholds.p95 + 8, 61.5, 100);
+}
+
+function scaleBetween(value, inMin, inMax, outMin, outMax) {
+  if (inMax === inMin) return outMin;
+  const ratio = Math.min(1, Math.max(0, (value - inMin) / (inMax - inMin)));
+  return outMin + ratio * (outMax - outMin);
 }
 
 function setPointer(pointer, status) {
@@ -812,11 +892,12 @@ function getRecommendation(person) {
 
   const meters = height / 100;
   const bmi = calculateBmi(person);
-  const low = 18.5 * meters * meters;
-  const high = 24.9 * meters * meters;
+  const idealRange = getIdealBmiRange(person, latestWeight.date);
+  const low = idealRange.low * meters * meters;
+  const high = idealRange.high * meters * meters;
 
-  if (bmi < 18.5) return `${formatNumber(low - latestWeight.kg)} kg alması önerilir.`;
-  if (bmi > 24.9) return `${formatNumber(latestWeight.kg - high)} kg vermesi önerilir.`;
+  if (bmi < idealRange.low) return `${formatNumber(low - latestWeight.kg)} kg alması önerilir.`;
+  if (bmi >= idealRange.high) return `${formatNumber(latestWeight.kg - high)} kg vermesi önerilir.`;
   return "İdeal aralıkta.";
 }
 
@@ -856,20 +937,21 @@ function getEntryWeekCount(person) {
 
 function getWeightLossReward(person) {
   const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  const targetWeight = getIdealUpperWeight(person);
-  if (!targetWeight || entries.length < 2) {
+  if (entries.length < 2) {
     return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
   }
 
   const first = entries[0];
   const latest = entries[entries.length - 1];
-  if (first.kg <= targetWeight) {
+  const startTargetWeight = getIdealUpperWeight(person, first.date);
+  const latestTargetWeight = getIdealUpperWeight(person, latest.date);
+  if (!startTargetWeight || !latestTargetWeight || first.kg <= startTargetWeight) {
     return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
   }
 
   const lossKg = Math.max(0, first.kg - latest.kg);
-  const distanceAtStart = Math.max(0, first.kg - targetWeight);
-  const distanceNow = Math.max(0, latest.kg - targetWeight);
+  const distanceAtStart = Math.max(0, first.kg - startTargetWeight);
+  const distanceNow = Math.max(0, latest.kg - latestTargetWeight);
   const progress = distanceAtStart ? Math.min(1, Math.max(0, (distanceAtStart - distanceNow) / distanceAtStart)) : 0;
   const proximityPercent = progress * 10;
   const baseReward = lossKg * 250;
@@ -907,7 +989,7 @@ function getNormalBmiDays(person) {
   const tomorrow = today + 1;
 
   return entries.reduce((total, entry, index) => {
-    if (!isIdealWeightForPerson(person, entry.kg)) return total;
+    if (!isIdealWeightForPerson(person, entry.kg, entry.date)) return total;
 
     const start = dateToDayNumber(entry.date);
     const next = entries[index + 1] ? dateToDayNumber(entries[index + 1].date) : tomorrow;
@@ -921,22 +1003,77 @@ function calculateBmiForWeight(weight, heightCm) {
   return Number(weight) / (meters * meters);
 }
 
-function isNormalBmi(bmi) {
-  return bmi >= 18.5 && bmi <= 24.9;
-}
-
-function isIdealWeightForPerson(person, kg) {
+function isIdealWeightForPerson(person, kg, asOfDate) {
   if (isCat(person)) return kg < 10;
   const height = Number(person.heightCm);
-  return Boolean(height) && isNormalBmi(calculateBmiForWeight(kg, height));
+  if (!height) return false;
+  const range = getIdealBmiRange(person, asOfDate);
+  const bmi = calculateBmiForWeight(kg, height);
+  return bmi >= range.low && bmi < range.high;
 }
 
-function getIdealUpperWeight(person) {
+function getIdealUpperWeight(person, asOfDate) {
   if (isCat(person)) return 10;
   const height = Number(person.heightCm);
   if (!height) return null;
   const meters = height / 100;
-  return 24.9 * meters * meters;
+  return getIdealBmiRange(person, asOfDate).high * meters * meters;
+}
+
+function getIdealBmiRange(person, asOfDate) {
+  const pediatricThresholds = getPediatricBmiThresholds(person, asOfDate);
+  if (pediatricThresholds) {
+    return {
+      low: pediatricThresholds.p5,
+      high: pediatricThresholds.p85,
+    };
+  }
+
+  return {
+    low: ADULT_BMI.normalLow,
+    high: ADULT_BMI.normalHigh,
+  };
+}
+
+function getPediatricBmiThresholds(person, asOfDate) {
+  if (isCat(person) || !person.birthDate || !["erkek", "kadın"].includes(person.gender)) return null;
+  const ageMonths = getAgeMonthsAtDate(person.birthDate, asOfDate || getTodayInputValue());
+  if (ageMonths < 24 || ageMonths > 240) return null;
+
+  const sex = person.gender === "erkek" ? 1 : 2;
+  const rows = (window.CDC_BMI_FOR_AGE || []).filter((row) => row[0] === sex);
+  if (!rows.length) return null;
+
+  let lower = rows[0];
+  let upper = rows[rows.length - 1];
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (row[1] <= ageMonths) lower = row;
+    if (row[1] >= ageMonths) {
+      upper = row;
+      break;
+    }
+  }
+
+  const interpolate = (fieldIndex) => {
+    if (upper[1] === lower[1]) return lower[fieldIndex];
+    const ratio = (ageMonths - lower[1]) / (upper[1] - lower[1]);
+    return lower[fieldIndex] + (upper[fieldIndex] - lower[fieldIndex]) * ratio;
+  };
+
+  return {
+    p5: interpolate(2),
+    p85: interpolate(3),
+    p95: interpolate(4),
+  };
+}
+
+function getAgeMonthsAtDate(birthDateValue, dateValue) {
+  const birth = new Date(`${birthDateValue}T12:00:00`);
+  const date = new Date(`${dateValue}T12:00:00`);
+  let months = (date.getFullYear() - birth.getFullYear()) * 12 + (date.getMonth() - birth.getMonth());
+  if (date.getDate() < birth.getDate()) months -= 1;
+  return months;
 }
 
 function getRewardCardText(rewards) {
@@ -988,8 +1125,9 @@ function getCaloriePlan(person) {
       : 10 * latestWeight.kg + 6.25 * height - 5 * age - 161;
   const maintenance = roundCalories(bmr * 1.375);
   const bmi = calculateBmi(person);
+  const idealRange = getIdealBmiRange(person, latestWeight.date);
 
-  if (bmi && bmi < 18.5) {
+  if (bmi && bmi < idealRange.low) {
     return {
       title: "Kilo almak için günlük kalori hedefi",
       target: `${formatCalories(maintenance + 300)} kcal`,
@@ -997,7 +1135,7 @@ function getCaloriePlan(person) {
     };
   }
 
-  if (bmi && bmi > 24.9) {
+  if (bmi && bmi >= idealRange.high) {
     const target = Math.max(roundCalories(bmr * 1.1), maintenance - 500);
     return {
       title: "Kilo vermek için günlük kalori hedefi",
