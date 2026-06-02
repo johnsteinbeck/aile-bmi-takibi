@@ -502,7 +502,7 @@ function renderPeople() {
     card.querySelector(".recommendation").textContent = getRecommendation(person);
     card.querySelector(".reward-total").textContent = `${formatCurrency(rewards.total)} kazandı`;
     card.querySelector(".reward-detail").textContent = getRewardCardText(rewards);
-    setPointer(pointer, status);
+    setMeter(pointer, status, person);
 
     card.addEventListener("click", () => openPerson(person.id));
     card.addEventListener("keydown", (event) => {
@@ -551,7 +551,7 @@ function renderDialog(person) {
   els.genderInput.value = person.gender ?? "";
   updateProfileFieldsForSpecies();
   syncDateInput();
-  setPointer(els.dialogPointer, status);
+  setMeter(els.dialogPointer, status, person);
   renderHistory(person);
   renderChart(person);
 }
@@ -875,6 +875,68 @@ function scaleBetween(value, inMin, inMax, outMin, outMax) {
 function setPointer(pointer, status) {
   pointer.style.setProperty("--pointer", `${status.pointer}%`);
   pointer.style.setProperty("--pointer-color", status.pointerColor);
+}
+
+function setMeter(pointer, status, person) {
+  setPointer(pointer, status);
+  setIdealWeightMarkers(pointer.closest(".meter"), person);
+}
+
+function setIdealWeightMarkers(meter, person) {
+  const track = meter?.querySelector(".meter-track");
+  if (!track) return;
+
+  const lowMarker = getOrCreateMeterMarker(track, "low");
+  const highMarker = getOrCreateMeterMarker(track, "high");
+  const range = getIdealWeightDisplayRange(person);
+
+  if (!range) {
+    lowMarker.hidden = true;
+    highMarker.hidden = true;
+    return;
+  }
+
+  lowMarker.hidden = !range.lowText;
+  lowMarker.textContent = range.lowText;
+  lowMarker.style.setProperty("--ideal-position", "17.3%");
+
+  highMarker.hidden = !range.highText;
+  highMarker.textContent = range.highText;
+  highMarker.style.setProperty("--ideal-position", "42.3%");
+}
+
+function getOrCreateMeterMarker(track, type) {
+  const className = `meter-ideal-${type}`;
+  const existing = track.querySelector(`.${className}`);
+  if (existing) return existing;
+
+  const marker = document.createElement("span");
+  marker.className = `meter-ideal-bound ${className}`;
+  track.appendChild(marker);
+  return marker;
+}
+
+function getIdealWeightDisplayRange(person) {
+  if (isCat(person)) {
+    return {
+      lowText: "",
+      highText: "Üst 10 kg",
+    };
+  }
+
+  const height = Number(person.heightCm);
+  if (!height) return null;
+
+  const latestWeight = getLatestWeight(person);
+  const idealRange = getIdealBmiRange(person, latestWeight?.date || getTodayInputValue());
+  const meters = height / 100;
+  const low = idealRange.low * meters * meters;
+  const high = idealRange.high * meters * meters;
+
+  return {
+    lowText: `Alt ${formatNumber(low)} kg`,
+    highText: `Üst ${formatNumber(high)} kg`,
+  };
 }
 
 function getRecommendation(person) {
