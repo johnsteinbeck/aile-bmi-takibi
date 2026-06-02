@@ -352,7 +352,7 @@ select:focus {
 .meter-track {
   position: relative;
   height: 12px;
-  margin-top: 18px;
+  margin-top: 36px;
   margin-bottom: 24px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--yellow) 0 17.3%, var(--green) 17.3% 42.3%, var(--yellow) 42.3% 61.5%, var(--red) 61.5% 100%);
@@ -362,11 +362,47 @@ select:focus {
 .meter-pointer {
   position: absolute;
   left: var(--pointer, 0%);
-  top: -18px;
-  width: 18px;
-  height: 24px;
+  top: -35px;
+  width: 54px;
+  height: 41px;
   border: 0;
   border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translateX(-50%);
+}
+
+.meter-pointer::before {
+  content: attr(data-weight);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  max-width: 54px;
+  padding: 2px 5px;
+  border: 1px solid rgba(23, 33, 31, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px rgba(23, 33, 31, 0.1);
+  transform: translateX(-50%);
+}
+
+.meter-pointer[data-weight=""]::before {
+  display: none;
+}
+
+.meter-pointer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 18px;
+  height: 24px;
   background: var(--pointer-color, var(--muted));
   box-shadow: 0 5px 14px rgba(23, 33, 31, 0.2);
   clip-path: polygon(50% 100%, 0 48%, 32% 48%, 32% 0, 68% 0, 68% 48%, 100% 48%);
@@ -378,7 +414,7 @@ select:focus {
   left: var(--ideal-position, 0%);
   top: 17px;
   z-index: 1;
-  max-width: 74px;
+  max-width: 48px;
   padding: 2px 5px;
   border: 1px solid rgba(15, 143, 124, 0.18);
   border-radius: 6px;

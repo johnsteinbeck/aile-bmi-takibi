@@ -879,30 +879,30 @@ function setPointer(pointer, status) {
 
 function setMeter(pointer, status, person) {
   setPointer(pointer, status);
-  setIdealWeightMarkers(pointer.closest(".meter"), person);
+  setPointerWeightLabel(pointer, person);
+  setMeterWeightMarkers(pointer.closest(".meter"), person);
 }
 
-function setIdealWeightMarkers(meter, person) {
+function setPointerWeightLabel(pointer, person) {
+  const latestWeight = getLatestWeight(person);
+  pointer.dataset.weight = latestWeight ? formatWholeKg(latestWeight.kg) : "";
+}
+
+function setMeterWeightMarkers(meter, person) {
   const track = meter?.querySelector(".meter-track");
   if (!track) return;
 
-  const lowMarker = getOrCreateMeterMarker(track, "low");
-  const highMarker = getOrCreateMeterMarker(track, "high");
-  const range = getIdealWeightDisplayRange(person);
+  const markerSlots = ["first", "second", "third"];
+  const markers = getMeterWeightMarkerValues(person);
 
-  if (!range) {
-    lowMarker.hidden = true;
-    highMarker.hidden = true;
-    return;
-  }
-
-  lowMarker.hidden = !range.lowText;
-  lowMarker.textContent = range.lowText;
-  lowMarker.style.setProperty("--ideal-position", "17.3%");
-
-  highMarker.hidden = !range.highText;
-  highMarker.textContent = range.highText;
-  highMarker.style.setProperty("--ideal-position", "42.3%");
+  markerSlots.forEach((slot, index) => {
+    const marker = getOrCreateMeterMarker(track, slot);
+    const markerValue = markers[index];
+    marker.hidden = !markerValue;
+    if (!markerValue) return;
+    marker.textContent = markerValue.text;
+    marker.style.setProperty("--ideal-position", markerValue.position);
+  });
 }
 
 function getOrCreateMeterMarker(track, type) {
@@ -916,27 +916,30 @@ function getOrCreateMeterMarker(track, type) {
   return marker;
 }
 
-function getIdealWeightDisplayRange(person) {
+function getMeterWeightMarkerValues(person) {
   if (isCat(person)) {
-    return {
-      lowText: "",
-      highText: "Üst 10 kg",
-    };
+    return [
+      { text: "10 kg", position: "42.3%" },
+      { text: "12 kg", position: "61.5%" },
+    ];
   }
 
   const height = Number(person.heightCm);
-  if (!height) return null;
+  if (!height) return [];
 
   const latestWeight = getLatestWeight(person);
-  const idealRange = getIdealBmiRange(person, latestWeight?.date || getTodayInputValue());
+  const asOfDate = latestWeight?.date || getTodayInputValue();
+  const pediatricThresholds = getPediatricBmiThresholds(person, asOfDate);
   const meters = height / 100;
-  const low = idealRange.low * meters * meters;
-  const high = idealRange.high * meters * meters;
+  const thresholds = pediatricThresholds
+    ? [pediatricThresholds.p5, pediatricThresholds.p85, pediatricThresholds.p95]
+    : [ADULT_BMI.normalLow, ADULT_BMI.normalHigh, ADULT_BMI.overweightHigh];
 
-  return {
-    lowText: `Alt ${formatNumber(low)} kg`,
-    highText: `Üst ${formatNumber(high)} kg`,
-  };
+  return [
+    { text: formatWholeKg(thresholds[0] * meters * meters), position: "17.3%" },
+    { text: formatWholeKg(thresholds[1] * meters * meters), position: "42.3%" },
+    { text: formatWholeKg(thresholds[2] * meters * meters), position: "61.5%" },
+  ];
 }
 
 function getRecommendation(person) {
@@ -1276,8 +1279,19 @@ function formatNumber(value) {
   }).format(value);
 }
 
+function formatWholeNumber(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
 function formatKg(value) {
   return `${formatNumber(value)} kg`;
+}
+
+function formatWholeKg(value) {
+  return `${formatWholeNumber(value)} kg`;
 }
 
 function formatCalories(value) {
