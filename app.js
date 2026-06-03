@@ -51,42 +51,42 @@ const MEAL_PLAN_RANGES = [
       {
         calories: "Yaklaşık 1250 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "520 kcal", items: ["2 yumurtalı sebzeli omlet", "Bol yeşillik", "1 kase yoğurt"] },
-          { title: "Ana öğün 2", calories: "560 kcal", items: ["Izgara tavuk göğsü", "Zeytinyağsız büyük salata", "4 kaşık bulgur"] },
+          { title: "Ana öğün 1", calories: "520 kcal", items: ["2 haşlanmış yumurta", "Beyaz peynir", "Domates, salatalık, yeşillik"] },
+          { title: "Ana öğün 2", calories: "560 kcal", items: ["Tavuklu sebze sote", "4 kaşık bulgur", "1 kase yoğurt"] },
         ],
-        snacks: ["1 orta elma", "10 badem", "Şekersiz Türk kahvesi"],
+        snacks: ["1 elma", "10 badem", "Şekersiz çay veya kahve"],
       },
       {
         calories: "Yaklaşık 1350 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "580 kcal", items: ["Lor peynirli büyük salata", "1 dilim tam buğday ekmeği", "Ayran"] },
-          { title: "Ana öğün 2", calories: "590 kcal", items: ["Fırında somon", "Haşlanmış brokoli", "3 kaşık karabuğday"] },
+          { title: "Ana öğün 1", calories: "560 kcal", items: ["Menemen", "1 dilim ekmek", "Salatalık ve maydanoz"] },
+          { title: "Ana öğün 2", calories: "620 kcal", items: ["Mercimek çorbası", "Yoğurtlu salata", "4 kaşık bulgur"] },
         ],
-        snacks: ["1 mandalina", "1 kase kefir"],
+        snacks: ["1 mandalina", "1 avuç leblebi"],
       },
       {
         calories: "Yaklaşık 1180 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "500 kcal", items: ["Yoğurtlu yulaf", "Tarçın", "Yarım muz", "5 ceviz içi"] },
-          { title: "Ana öğün 2", calories: "530 kcal", items: ["Hindi köfte", "Çoban salata", "1 kase cacık"] },
+          { title: "Ana öğün 1", calories: "500 kcal", items: ["1 kase yoğurt", "Yarım muz", "2 ceviz içi", "Tarçın"] },
+          { title: "Ana öğün 2", calories: "540 kcal", items: ["Izgara köfte", "Çoban salata", "1 kase cacık"] },
         ],
-        snacks: ["Salatalık ve havuç", "1 küçük armut"],
+        snacks: ["Salatalık ve havuç", "1 küçük armut", "5 ceviz içi"],
       },
       {
         calories: "Yaklaşık 1450 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "640 kcal", items: ["Menemen", "1 dilim tam buğday ekmeği", "Beyaz peynir"] },
-          { title: "Ana öğün 2", calories: "620 kcal", items: ["Etli sebze yemeği", "Yoğurt", "Bol salata"] },
+          { title: "Ana öğün 1", calories: "640 kcal", items: ["Menemen", "1 dilim ekmek", "Beyaz peynir"] },
+          { title: "Ana öğün 2", calories: "630 kcal", items: ["Kabak veya taze fasulye yemeği", "Yoğurt", "Bol salata"] },
         ],
-        snacks: ["1 bardak süt", "1 avuç çilek"],
+        snacks: ["1 bardak süt", "1 portakal"],
       },
       {
         calories: "Yaklaşık 1300 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "540 kcal", items: ["Ton balıklı salata", "Mısır eklemeden", "1 dilim ekşi mayalı ekmek"] },
-          { title: "Ana öğün 2", calories: "600 kcal", items: ["Zeytinyağsız tavuklu sebze sote", "4 kaşık yoğurt", "Yeşil salata"] },
+          { title: "Ana öğün 1", calories: "540 kcal", items: ["Peynirli omlet", "Domates salatalık", "1 dilim ekmek"] },
+          { title: "Ana öğün 2", calories: "600 kcal", items: ["Haşlanmış tavuk", "Yoğurt", "Marul salatası"] },
         ],
-        snacks: ["1 kivi", "8 fındık"],
+        snacks: ["1 elma veya armut", "8 fındık"],
       },
     ],
   },
@@ -98,7 +98,7 @@ const MEAL_PLAN_RANGES = [
       {
         calories: "Yaklaşık 1750 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "760 kcal", items: ["2 yumurta", "Peynir", "Zeytin", "Bol yeşillik", "2 dilim tam buğday ekmeği"] },
+          { title: "Ana öğün 1", calories: "760 kcal", items: ["2 yumurta", "Peynir", "Zeytin", "Bol yeşillik", "2 dilim ekmek"] },
           { title: "Ana öğün 2", calories: "780 kcal", items: ["Izgara köfte", "Bulgur pilavı", "Cacık", "Mevsim salata"] },
         ],
         snacks: ["1 kase yoğurt", "1 elma", "10 badem"],
@@ -106,23 +106,23 @@ const MEAL_PLAN_RANGES = [
       {
         calories: "Yaklaşık 1850 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "780 kcal", items: ["Tavuklu tam buğday dürüm", "Ayran", "Bol yeşillik"] },
-          { title: "Ana öğün 2", calories: "850 kcal", items: ["Fırında balık", "Patates yerine sebze", "Mercimek çorbası"] },
+          { title: "Ana öğün 1", calories: "780 kcal", items: ["Tavuklu sandviç", "Ayran", "Bol yeşillik"] },
+          { title: "Ana öğün 2", calories: "850 kcal", items: ["Kuru fasulye", "4 kaşık pilav", "Yoğurt", "Salata"] },
         ],
-        snacks: ["1 muz", "1 bardak kefir"],
+        snacks: ["1 muz", "1 bardak süt"],
       },
       {
         calories: "Yaklaşık 1650 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "700 kcal", items: ["Yulaf kasesi", "Yoğurt", "Orman meyvesi", "Ceviz"] },
-          { title: "Ana öğün 2", calories: "760 kcal", items: ["Tavuk şiş", "6 kaşık bulgur", "Bol salata", "Ayran"] },
+          { title: "Ana öğün 1", calories: "700 kcal", items: ["1 kase yoğurt", "Muz", "Ceviz", "1 dilim ekmek"] },
+          { title: "Ana öğün 2", calories: "760 kcal", items: ["Tavuk şiş veya tavuk sote", "6 kaşık bulgur", "Bol salata", "Ayran"] },
         ],
         snacks: ["1 portakal", "1 haşlanmış yumurta"],
       },
       {
         calories: "Yaklaşık 1950 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "820 kcal", items: ["Peynirli omlet", "Domates salatalık", "2 dilim ekmek", "Kefir"] },
+          { title: "Ana öğün 1", calories: "820 kcal", items: ["Peynirli omlet", "Domates salatalık", "2 dilim ekmek", "Ayran"] },
           { title: "Ana öğün 2", calories: "920 kcal", items: ["Kuru fasulye", "4 kaşık pilav", "Yoğurt", "Salata"] },
         ],
         snacks: ["1 avuç leblebi", "1 armut"],
@@ -130,8 +130,8 @@ const MEAL_PLAN_RANGES = [
       {
         calories: "Yaklaşık 1700 kcal",
         mains: [
-          { title: "Ana öğün 1", calories: "720 kcal", items: ["Hindi füme sandviç", "Bol yeşillik", "Ayran"] },
-          { title: "Ana öğün 2", calories: "780 kcal", items: ["Sebzeli et sote", "Yoğurt", "Karışık salata", "3 kaşık bulgur"] },
+          { title: "Ana öğün 1", calories: "720 kcal", items: ["Peynirli tost", "Domates salatalık", "Ayran"] },
+          { title: "Ana öğün 2", calories: "780 kcal", items: ["Sebzeli kıyma yemeği", "Yoğurt", "Karışık salata", "3 kaşık bulgur"] },
         ],
         snacks: ["1 bardak süt", "12 badem"],
       },
