@@ -86,6 +86,57 @@ h1 {
   line-height: 1.45;
 }
 
+.monthly-leaders {
+  width: min(390px, 100%);
+  flex: 0 0 min(390px, 100%);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--brand);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 36px rgba(31, 53, 48, 0.07);
+}
+
+.monthly-leaders h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.monthly-leaders table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.monthly-leaders th,
+.monthly-leaders td {
+  padding: 8px 0;
+  border-top: 1px solid rgba(220, 232, 228, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.25;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.monthly-leaders th {
+  width: 66px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.monthly-leaders td:nth-child(2) {
+  font-weight: 850;
+}
+
+.monthly-leaders td:last-child {
+  width: 72px;
+  color: var(--brand-dark);
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .toolbar,
 .input-row,
 .history-head {
@@ -190,6 +241,12 @@ h1 {
   margin-bottom: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.data-tools-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 
 .controls {
@@ -707,6 +764,12 @@ canvas {
 
   .topbar {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .monthly-leaders {
+    width: 100%;
+    flex-basis: auto;
   }
 
   .summary-strip {
@@ -757,6 +820,10 @@ canvas {
     width: 100%;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .data-tools-section {
+    justify-content: flex-start;
   }
 
   .summary-strip {

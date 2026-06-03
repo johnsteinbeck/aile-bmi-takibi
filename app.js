@@ -52,6 +52,10 @@ const els = {
   trackedPeople: document.querySelector("#trackedPeople"),
   healthyPeople: document.querySelector("#healthyPeople"),
   latestEntry: document.querySelector("#latestEntry"),
+  monthLoserName: document.querySelector("#monthLoserName"),
+  monthLoserAmount: document.querySelector("#monthLoserAmount"),
+  monthGainerName: document.querySelector("#monthGainerName"),
+  monthGainerAmount: document.querySelector("#monthGainerAmount"),
   addPersonForm: document.querySelector("#addPersonForm"),
   personName: document.querySelector("#personName"),
   searchPeople: document.querySelector("#searchPeople"),
@@ -469,6 +473,7 @@ async function deleteSelectedPerson() {
 
 function render() {
   renderSummary();
+  renderMonthlyLeaders();
   renderPeople();
 }
 
@@ -486,6 +491,55 @@ function renderSummary() {
   els.trackedPeople.textContent = tracked.length;
   els.healthyPeople.textContent = healthy.length;
   els.latestEntry.textContent = latest ? formatShortDate(latest.date) : "-";
+}
+
+function renderMonthlyLeaders() {
+  const leaders = getMonthlyWeightLeaders();
+  const loser = leaders.loser;
+  const gainer = leaders.gainer;
+
+  els.monthLoserName.textContent = loser ? loser.name : "Kimse yok";
+  els.monthLoserAmount.textContent = loser ? formatKg(loser.amount) : "0 kg";
+  els.monthGainerName.textContent = gainer ? gainer.name : "Kimse yok";
+  els.monthGainerAmount.textContent = gainer ? formatKg(gainer.amount) : "0 kg";
+}
+
+function getMonthlyWeightLeaders() {
+  const today = new Date(`${getTodayInputValue()}T12:00:00`);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 12);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1, 12);
+  const monthStartValue = dateToInputValue(monthStart);
+  const nextMonthStartValue = dateToInputValue(nextMonthStart);
+
+  const changes = state.people
+    .map((person) => getMonthlyWeightChange(person, monthStartValue, nextMonthStartValue))
+    .filter(Boolean);
+
+  const loser = changes
+    .filter((change) => change.delta < 0)
+    .sort((a, b) => a.delta - b.delta || a.name.localeCompare(b.name, "tr"))[0];
+  const gainer = changes
+    .filter((change) => change.delta > 0)
+    .sort((a, b) => b.delta - a.delta || a.name.localeCompare(b.name, "tr"))[0];
+
+  return {
+    loser: loser ? { name: loser.name, amount: Math.abs(loser.delta) } : null,
+    gainer: gainer ? { name: gainer.name, amount: gainer.delta } : null,
+  };
+}
+
+function getMonthlyWeightChange(person, monthStartValue, nextMonthStartValue) {
+  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
+  const monthEntries = entries.filter((entry) => entry.date >= monthStartValue && entry.date < nextMonthStartValue);
+  if (!monthEntries.length) return null;
+
+  const baseline = [...entries].reverse().find((entry) => entry.date < monthStartValue) || monthEntries[0];
+  const latest = monthEntries[monthEntries.length - 1];
+
+  return {
+    name: person.name,
+    delta: latest.kg - baseline.kg,
+  };
 }
 
 function renderPeople() {
@@ -1333,9 +1387,13 @@ function syncDateInput() {
 
 function getTodayInputValue() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  return dateToInputValue(now);
+}
+
+function dateToInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ödüllü Aile Kilo Takibi</title>
-    <link rel="stylesheet" href="styles.css?v=20260603-1" />
+    <link rel="stylesheet" href="styles.css?v=20260603-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -14,16 +14,23 @@
           <h1 id="page-title">Ödüllü Aile Kilo Takibi</h1>
           <p class="daily-quote" id="dailyQuote"></p>
         </div>
-        <div class="toolbar" aria-label="Veri araçları">
-          <button class="icon-button" id="exportData" type="button" aria-label="Yedek indir" title="Yedek indir">
-            <span aria-hidden="true">↓</span>
-          </button>
-          <button class="icon-button" id="importData" type="button" aria-label="Yedek yükle" title="Yedek yükle">
-            <span aria-hidden="true">↑</span>
-          </button>
-          <input id="importFile" type="file" accept="application/json" hidden />
-          <span class="storage-status" id="storageStatus">Hazırlanıyor</span>
-        </div>
+        <aside class="monthly-leaders" aria-labelledby="monthlyLeadersTitle">
+          <h2 id="monthlyLeadersTitle">Ayın en çok kilo vereni ve alanı</h2>
+          <table>
+            <tbody>
+              <tr>
+                <th scope="row">Veren</th>
+                <td id="monthLoserName">Kimse yok</td>
+                <td id="monthLoserAmount">0 kg</td>
+              </tr>
+              <tr>
+                <th scope="row">Alan</th>
+                <td id="monthGainerName">Kimse yok</td>
+                <td id="monthGainerAmount">0 kg</td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
       </section>
 
       <section class="controls" aria-label="Kişi arama">
@@ -64,6 +71,19 @@
           <span id="latestEntry">-</span>
           <p>Son giriş</p>
         </article>
+      </section>
+
+      <section class="data-tools-section" aria-label="Veri araçları">
+        <div class="toolbar">
+          <button class="icon-button" id="exportData" type="button" aria-label="Yedek indir" title="Yedek indir">
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="icon-button" id="importData" type="button" aria-label="Yedek yükle" title="Yedek yükle">
+            <span aria-hidden="true">↑</span>
+          </button>
+          <input id="importFile" type="file" accept="application/json" hidden />
+          <span class="storage-status" id="storageStatus">Hazırlanıyor</span>
+        </div>
       </section>
     </main>
 
@@ -177,8 +197,8 @@
       </article>
     </template>
 
-    <script src="config.js?v=20260603-1"></script>
-    <script src="cdc-bmi-data.js?v=20260603-1"></script>
-    <script src="app.js?v=20260603-1"></script>
+    <script src="config.js?v=20260603-2"></script>
+    <script src="cdc-bmi-data.js?v=20260603-2"></script>
+    <script src="app.js?v=20260603-2"></script>
   </body>
 </html>
