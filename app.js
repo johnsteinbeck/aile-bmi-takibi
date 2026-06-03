@@ -29,6 +29,13 @@ const ADULT_BMI = {
   obeseClass3: 40,
 };
 
+const QUOTE_SOURCE =
+  "Tartı yalan söylemez. Buzdolabını açmak bir aktivite değildir. Aç değilsin. Sadece mutfağın önünden geçiyorsun. Tartıdan kaçmak, sonucu değiştirmez. Her gün 500 kalori fazla, 15 günde 1 kilo aldırır. 1 kutu kola ≈ 7-8 küp şeker demek. Bir tabak patates kızartması ≈ 1 saat yürüyüş demek. 100 g sütlü çikolata ≈ 500 kalori. 1 kilo 7700 kaloriye denk gelir. Aç değilsin sadece canın sıkılıyor. Elindeki ekmeği sessizce yerine bırak. Kimse fark etmedi. Ekmeği tamamen bırak. Ekmeği dün bırakmadın bugün bırak. Son öğünde bir dilim ekmek yedin yemesen aç kalmazdın. Neden ekmek yiyiyorum diye sor kendine. Tebrikler ekmeği bıraktın. Küçük alışkanlıklar büyük değişimler üretir. 10 dakikalık yürüyüş bile iştahı azaltır. Susuzluk bazen açlık gibi hissedilebilir BOL SU İÇ. Acıktın mı o zaman su iç. Hedefine az kaldı bugün başlarsan. Sadece tadına bakacağım yasaklı bir söz unutma. Hedef kilon seni bekliyor. Bugün başlamak için mükemmel gün. Her öğün yeni bir başlangıçtır. 500 kaloriyi yemek 5 dakika, yakmak saatler sürebilir. Ekmek olmadan da yemek yenebilir. Bir tabak salata, bir avuç cipsle aynı kalori. Her öğünde 4 dilim ekmeği çıkarırsan günde yaklaşık 840 kalori demek yani 1 haftada bir kilo verirsin. Her öğün iki dilim ekmek yememek 6 ayda 10 kiloya denk gelir. Kalori açığı oluştur.";
+
+const DAILY_QUOTES = QUOTE_SOURCE.split(".")
+  .map((quote) => quote.trim())
+  .filter(Boolean);
+
 const state = {
   people: [],
   selectedId: null,
@@ -77,6 +84,7 @@ const els = {
   importData: document.querySelector("#importData"),
   importFile: document.querySelector("#importFile"),
   storageStatus: document.querySelector("#storageStatus"),
+  dailyQuote: document.querySelector("#dailyQuote"),
 };
 
 els.addPersonForm.addEventListener("submit", addPerson);
@@ -99,6 +107,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 syncDateInput();
+setWelcomeQuote();
 setInterval(syncDateInput, 60000);
 init();
 
@@ -112,6 +121,12 @@ function createPerson(name) {
     gender: "",
     weights: [],
   };
+}
+
+function setWelcomeQuote() {
+  if (!els.dailyQuote || DAILY_QUOTES.length === 0) return;
+  const quote = DAILY_QUOTES[Math.floor(Math.random() * DAILY_QUOTES.length)];
+  els.dailyQuote.textContent = `${quote}.`;
 }
 
 async function init() {

@@ -77,6 +77,15 @@ h1 {
   letter-spacing: 0;
 }
 
+.daily-quote {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: clamp(0.94rem, 2.5vw, 1.08rem);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 .toolbar,
 .input-row,
 .history-head {
