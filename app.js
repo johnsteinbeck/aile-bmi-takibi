@@ -42,11 +42,109 @@ const DAILY_QUOTES = QUOTE_SOURCE.split(".")
   .map((quote) => quote.trim())
   .filter(Boolean);
 
+const MEAL_PLAN_RANGES = [
+  {
+    id: "low",
+    title: "1000-1500 kalori",
+    subtitle: "Hafif günlük plan",
+    plans: [
+      {
+        calories: "Yaklaşık 1250 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "520 kcal", items: ["2 yumurtalı sebzeli omlet", "Bol yeşillik", "1 kase yoğurt"] },
+          { title: "Ana öğün 2", calories: "560 kcal", items: ["Izgara tavuk göğsü", "Zeytinyağsız büyük salata", "4 kaşık bulgur"] },
+        ],
+        snacks: ["1 orta elma", "10 badem", "Şekersiz Türk kahvesi"],
+      },
+      {
+        calories: "Yaklaşık 1350 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "580 kcal", items: ["Lor peynirli büyük salata", "1 dilim tam buğday ekmeği", "Ayran"] },
+          { title: "Ana öğün 2", calories: "590 kcal", items: ["Fırında somon", "Haşlanmış brokoli", "3 kaşık karabuğday"] },
+        ],
+        snacks: ["1 mandalina", "1 kase kefir"],
+      },
+      {
+        calories: "Yaklaşık 1180 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "500 kcal", items: ["Yoğurtlu yulaf", "Tarçın", "Yarım muz", "5 ceviz içi"] },
+          { title: "Ana öğün 2", calories: "530 kcal", items: ["Hindi köfte", "Çoban salata", "1 kase cacık"] },
+        ],
+        snacks: ["Salatalık ve havuç", "1 küçük armut"],
+      },
+      {
+        calories: "Yaklaşık 1450 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "640 kcal", items: ["Menemen", "1 dilim tam buğday ekmeği", "Beyaz peynir"] },
+          { title: "Ana öğün 2", calories: "620 kcal", items: ["Etli sebze yemeği", "Yoğurt", "Bol salata"] },
+        ],
+        snacks: ["1 bardak süt", "1 avuç çilek"],
+      },
+      {
+        calories: "Yaklaşık 1300 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "540 kcal", items: ["Ton balıklı salata", "Mısır eklemeden", "1 dilim ekşi mayalı ekmek"] },
+          { title: "Ana öğün 2", calories: "600 kcal", items: ["Zeytinyağsız tavuklu sebze sote", "4 kaşık yoğurt", "Yeşil salata"] },
+        ],
+        snacks: ["1 kivi", "8 fındık"],
+      },
+    ],
+  },
+  {
+    id: "balanced",
+    title: "1500-2000 kalori",
+    subtitle: "Daha tok tutan günlük plan",
+    plans: [
+      {
+        calories: "Yaklaşık 1750 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "760 kcal", items: ["2 yumurta", "Peynir", "Zeytin", "Bol yeşillik", "2 dilim tam buğday ekmeği"] },
+          { title: "Ana öğün 2", calories: "780 kcal", items: ["Izgara köfte", "Bulgur pilavı", "Cacık", "Mevsim salata"] },
+        ],
+        snacks: ["1 kase yoğurt", "1 elma", "10 badem"],
+      },
+      {
+        calories: "Yaklaşık 1850 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "780 kcal", items: ["Tavuklu tam buğday dürüm", "Ayran", "Bol yeşillik"] },
+          { title: "Ana öğün 2", calories: "850 kcal", items: ["Fırında balık", "Patates yerine sebze", "Mercimek çorbası"] },
+        ],
+        snacks: ["1 muz", "1 bardak kefir"],
+      },
+      {
+        calories: "Yaklaşık 1650 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "700 kcal", items: ["Yulaf kasesi", "Yoğurt", "Orman meyvesi", "Ceviz"] },
+          { title: "Ana öğün 2", calories: "760 kcal", items: ["Tavuk şiş", "6 kaşık bulgur", "Bol salata", "Ayran"] },
+        ],
+        snacks: ["1 portakal", "1 haşlanmış yumurta"],
+      },
+      {
+        calories: "Yaklaşık 1950 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "820 kcal", items: ["Peynirli omlet", "Domates salatalık", "2 dilim ekmek", "Kefir"] },
+          { title: "Ana öğün 2", calories: "920 kcal", items: ["Kuru fasulye", "4 kaşık pilav", "Yoğurt", "Salata"] },
+        ],
+        snacks: ["1 avuç leblebi", "1 armut"],
+      },
+      {
+        calories: "Yaklaşık 1700 kcal",
+        mains: [
+          { title: "Ana öğün 1", calories: "720 kcal", items: ["Hindi füme sandviç", "Bol yeşillik", "Ayran"] },
+          { title: "Ana öğün 2", calories: "780 kcal", items: ["Sebzeli et sote", "Yoğurt", "Karışık salata", "3 kaşık bulgur"] },
+        ],
+        snacks: ["1 bardak süt", "12 badem"],
+      },
+    ],
+  },
+];
+
 const state = {
   people: [],
   selectedId: null,
   query: "",
   themeChoice: getStoredThemeChoice(),
+  activeView: "tracking",
 };
 
 let dataStore;
@@ -97,6 +195,11 @@ const els = {
   storageStatus: document.querySelector("#storageStatus"),
   dailyQuote: document.querySelector("#dailyQuote"),
   themeButtons: document.querySelectorAll("button[data-theme-choice]"),
+  viewButtons: document.querySelectorAll("button[data-view-tab]"),
+  trackingView: document.querySelector("#trackingView"),
+  mealMenuView: document.querySelector("#mealMenuView"),
+  mealMenuDate: document.querySelector("#mealMenuDate"),
+  mealPlanGrid: document.querySelector("#mealPlanGrid"),
 };
 
 els.addPersonForm.addEventListener("submit", addPerson);
@@ -114,6 +217,9 @@ els.editProfile.addEventListener("click", showProfileForm);
 els.genderInput.addEventListener("change", updateProfileFieldsForSpecies);
 els.themeButtons.forEach((button) => {
   button.addEventListener("click", () => setThemeChoice(button.dataset.themeChoice));
+});
+els.viewButtons.forEach((button) => {
+  button.addEventListener("click", () => setActiveView(button.dataset.viewTab));
 });
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
 window.addEventListener("focus", () => {
@@ -133,6 +239,7 @@ setWelcomeQuote();
 setInterval(() => {
   syncDateInput();
   syncScheduledTheme();
+  renderMealMenu();
 }, 60000);
 init();
 
@@ -541,6 +648,94 @@ function render() {
   renderSummary();
   renderMonthlyLeaders();
   renderPeople();
+  renderMealMenu();
+  syncActiveView();
+}
+
+function setActiveView(view) {
+  if (!["tracking", "meals"].includes(view)) return;
+  state.activeView = view;
+  syncActiveView();
+  if (view === "meals") renderMealMenu();
+}
+
+function syncActiveView() {
+  els.trackingView.hidden = state.activeView !== "tracking";
+  els.mealMenuView.hidden = state.activeView !== "meals";
+  els.viewButtons.forEach((button) => {
+    const isActive = button.dataset.viewTab === state.activeView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function renderMealMenu() {
+  if (!els.mealPlanGrid) return;
+
+  const today = getTodayInputValue();
+  const dayNumber = dateToDayNumber(today);
+  els.mealMenuDate.textContent = formatLongDate(today);
+  els.mealPlanGrid.innerHTML = "";
+
+  MEAL_PLAN_RANGES.forEach((range, rangeIndex) => {
+    const plan = range.plans[(dayNumber + rangeIndex * 2) % range.plans.length];
+    els.mealPlanGrid.appendChild(createMealPlanCard(range, plan));
+  });
+}
+
+function createMealPlanCard(range, plan) {
+  const card = document.createElement("article");
+  card.className = "meal-plan-card";
+
+  const header = document.createElement("div");
+  header.className = "meal-plan-card-head";
+
+  const titleWrap = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = range.title;
+  const subtitle = document.createElement("p");
+  subtitle.textContent = range.subtitle;
+  titleWrap.append(title, subtitle);
+
+  const calories = document.createElement("span");
+  calories.textContent = plan.calories;
+  header.append(titleWrap, calories);
+  card.appendChild(header);
+
+  const meals = document.createElement("div");
+  meals.className = "meal-blocks";
+  plan.mains.forEach((meal) => meals.appendChild(createMealBlock(meal.title, meal.calories, meal.items)));
+  meals.appendChild(createMealBlock("Ara öğünler", "", plan.snacks));
+  card.appendChild(meals);
+
+  return card;
+}
+
+function createMealBlock(titleText, caloriesText, items) {
+  const block = document.createElement("section");
+  block.className = "meal-block";
+
+  const heading = document.createElement("div");
+  heading.className = "meal-block-head";
+  const title = document.createElement("h4");
+  title.textContent = titleText;
+  heading.appendChild(title);
+  if (caloriesText) {
+    const calories = document.createElement("span");
+    calories.textContent = caloriesText;
+    heading.appendChild(calories);
+  }
+  block.appendChild(heading);
+
+  const list = document.createElement("ul");
+  items.forEach((item) => {
+    const listItem = document.createElement("li");
+    listItem.textContent = item;
+    list.appendChild(listItem);
+  });
+  block.appendChild(list);
+
+  return block;
 }
 
 function renderSummary() {

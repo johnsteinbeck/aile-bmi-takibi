@@ -17,7 +17,7 @@
         document.documentElement.dataset.themeChoice = choice;
       })();
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260603-10" />
+    <link rel="stylesheet" href="styles.css?v=20260603-11" />
   </head>
   <body>
     <main class="app-shell">
@@ -52,44 +52,62 @@
         </aside>
       </section>
 
-      <section class="controls" aria-label="Kişi arama">
-        <label class="search-field" for="searchPeople">
-          <span>Arama</span>
-          <input id="searchPeople" type="search" placeholder="İsim ara" />
-        </label>
+      <section class="view-tabs" aria-label="Bölümler">
+        <button class="active" type="button" data-view-tab="tracking">Aile takibi</button>
+        <button type="button" data-view-tab="meals">Öğün menüsü</button>
       </section>
 
-      <section class="people-grid" id="peopleGrid" aria-label="Aile üyeleri"></section>
+      <section class="tab-view" id="trackingView">
+        <section class="controls" aria-label="Kişi arama">
+          <label class="search-field" for="searchPeople">
+            <span>Arama</span>
+            <input id="searchPeople" type="search" placeholder="İsim ara" />
+          </label>
+        </section>
 
-      <section class="add-person-section" aria-label="Yeni kişi ekleme">
-        <form class="add-person" id="addPersonForm">
-          <label for="personName">Yeni kişi</label>
-          <div class="input-row">
-            <input id="personName" name="personName" type="text" autocomplete="off" placeholder="İsim" />
-            <button type="submit" aria-label="Kişi ekle" title="Kişi ekle">
-              <span aria-hidden="true">+</span>
-            </button>
+        <section class="people-grid" id="peopleGrid" aria-label="Aile üyeleri"></section>
+
+        <section class="add-person-section" aria-label="Yeni kişi ekleme">
+          <form class="add-person" id="addPersonForm">
+            <label for="personName">Yeni kişi</label>
+            <div class="input-row">
+              <input id="personName" name="personName" type="text" autocomplete="off" placeholder="İsim" />
+              <button type="submit" aria-label="Kişi ekle" title="Kişi ekle">
+                <span aria-hidden="true">+</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="summary-strip" aria-label="Özet">
+          <article>
+            <span id="totalPeople">0</span>
+            <p>Kişi</p>
+          </article>
+          <article>
+            <span id="trackedPeople">0</span>
+            <p>Aktif kayıt</p>
+          </article>
+          <article>
+            <span id="healthyPeople">0</span>
+            <p>İdeal aralık</p>
+          </article>
+          <article>
+            <span id="familyLossTarget">0 kg</span>
+            <p>Ailenin toplam kilo fazlası</p>
+          </article>
+        </section>
+      </section>
+
+      <section class="meal-menu-view tab-view" id="mealMenuView" hidden aria-labelledby="mealMenuTitle">
+        <div class="meal-menu-head">
+          <div>
+            <p class="eyebrow">Günlük öneri</p>
+            <h2 id="mealMenuTitle">Öğün menüsü</h2>
           </div>
-        </form>
-      </section>
-
-      <section class="summary-strip" aria-label="Özet">
-        <article>
-          <span id="totalPeople">0</span>
-          <p>Kişi</p>
-        </article>
-        <article>
-          <span id="trackedPeople">0</span>
-          <p>Aktif kayıt</p>
-        </article>
-        <article>
-          <span id="healthyPeople">0</span>
-          <p>İdeal aralık</p>
-        </article>
-        <article>
-          <span id="familyLossTarget">0 kg</span>
-          <p>Ailenin toplam kilo fazlası</p>
-        </article>
+          <span id="mealMenuDate"></span>
+        </div>
+        <div class="meal-plan-grid" id="mealPlanGrid"></div>
       </section>
 
       <section class="data-tools-section" aria-label="Veri araçları">
@@ -216,8 +234,8 @@
       </article>
     </template>
 
-    <script src="config.js?v=20260603-10"></script>
-    <script src="cdc-bmi-data.js?v=20260603-10"></script>
-    <script src="app.js?v=20260603-10"></script>
+    <script src="config.js?v=20260603-11"></script>
+    <script src="cdc-bmi-data.js?v=20260603-11"></script>
+    <script src="app.js?v=20260603-11"></script>
   </body>
 </html>
