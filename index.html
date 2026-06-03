@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ödüllü Aile Kilo Takibi</title>
-    <link rel="stylesheet" href="styles.css?v=20260603-3" />
+    <script>
+      (() => {
+        const hour = new Date().getHours();
+        document.documentElement.dataset.theme = hour >= 18 || hour < 6 ? "dark" : "light";
+      })();
+    </script>
+    <link rel="stylesheet" href="styles.css?v=20260603-4" />
   </head>
   <body>
     <main class="app-shell">
@@ -198,8 +204,8 @@
       </article>
     </template>
 
-    <script src="config.js?v=20260603-3"></script>
-    <script src="cdc-bmi-data.js?v=20260603-3"></script>
-    <script src="app.js?v=20260603-3"></script>
+    <script src="config.js?v=20260603-4"></script>
+    <script src="cdc-bmi-data.js?v=20260603-4"></script>
+    <script src="app.js?v=20260603-4"></script>
   </body>
 </html>

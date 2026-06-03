@@ -1,4 +1,6 @@
 const STORAGE_KEY = "aile-bmi-takibi-v2";
+const DARK_MODE_START_HOUR = 18;
+const DARK_MODE_END_HOUR = 6;
 
 const DEFAULT_PEOPLE = [
   "Mehmet",
@@ -107,14 +109,24 @@ els.importFile.addEventListener("change", importData);
 els.editProfile.addEventListener("click", showProfileForm);
 els.genderInput.addEventListener("change", updateProfileFieldsForSpecies);
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
-window.addEventListener("focus", syncDateInput);
+window.addEventListener("focus", () => {
+  syncDateInput();
+  syncScheduledTheme();
+});
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) syncDateInput();
+  if (!document.hidden) {
+    syncDateInput();
+    syncScheduledTheme();
+  }
 });
 
 syncDateInput();
+syncScheduledTheme();
 setWelcomeQuote();
-setInterval(syncDateInput, 60000);
+setInterval(() => {
+  syncDateInput();
+  syncScheduledTheme();
+}, 60000);
 init();
 
 function createPerson(name) {
@@ -133,6 +145,20 @@ function setWelcomeQuote() {
   if (!els.dailyQuote || DAILY_QUOTES.length === 0) return;
   const quote = DAILY_QUOTES[Math.floor(Math.random() * DAILY_QUOTES.length)];
   els.dailyQuote.textContent = `${quote}.`;
+}
+
+function syncScheduledTheme() {
+  const theme = getScheduledTheme();
+  const previousTheme = document.documentElement.dataset.theme;
+
+  if (previousTheme === theme) return;
+  document.documentElement.dataset.theme = theme;
+  renderChart(getSelectedPerson());
+}
+
+function getScheduledTheme(date = new Date()) {
+  const hour = date.getHours();
+  return hour >= DARK_MODE_START_HOUR || hour < DARK_MODE_END_HOUR ? "dark" : "light";
 }
 
 async function init() {
@@ -718,10 +744,11 @@ function renderChart(person) {
   const range = Math.max(1, max - min);
   const xFor = (index) => padding.left + (entries.length === 1 ? chartWidth / 2 : (index / (entries.length - 1)) * chartWidth);
   const yFor = (kg) => padding.top + chartHeight - ((kg - min) / range) * chartHeight;
+  const chartColors = getChartColors();
 
   context.lineWidth = 1;
-  context.strokeStyle = "#dce8e4";
-  context.fillStyle = "#687874";
+  context.strokeStyle = chartColors.line;
+  context.fillStyle = chartColors.muted;
   context.font = "12px Inter, system-ui, sans-serif";
 
   for (let step = 0; step <= 4; step += 1) {
@@ -736,7 +763,7 @@ function renderChart(person) {
 
   if (isCat(person)) {
     const idealY = Math.min(padding.top + chartHeight, Math.max(padding.top, yFor(10)));
-    context.fillStyle = "rgba(53, 173, 114, 0.08)";
+    context.fillStyle = chartColors.idealFill;
     context.fillRect(padding.left, idealY, chartWidth, padding.top + chartHeight - idealY);
   } else if (person.heightCm) {
     const h = Number(person.heightCm) / 100;
@@ -745,7 +772,7 @@ function renderChart(person) {
     const highTarget = idealRange.high * h * h;
     const lowY = yFor(lowTarget);
     const highY = yFor(highTarget);
-    context.fillStyle = "rgba(53, 173, 114, 0.08)";
+    context.fillStyle = chartColors.idealFill;
     context.fillRect(padding.left, highY, chartWidth, Math.max(0, lowY - highY));
   }
 
@@ -756,7 +783,7 @@ function renderChart(person) {
     if (index === 0) context.moveTo(x, y);
     else context.lineTo(x, y);
   });
-  context.strokeStyle = "#0f8f7c";
+  context.strokeStyle = chartColors.brand;
   context.lineWidth = 3;
   context.stroke();
 
@@ -765,20 +792,33 @@ function renderChart(person) {
     const y = yFor(entry.kg);
     context.beginPath();
     context.arc(x, y, 5, 0, Math.PI * 2);
-    context.fillStyle = "#ffffff";
+    context.fillStyle = chartColors.panel;
     context.fill();
     context.lineWidth = 3;
-    context.strokeStyle = "#0f8f7c";
+    context.strokeStyle = chartColors.brand;
     context.stroke();
   });
 
-  context.fillStyle = "#687874";
+  context.fillStyle = chartColors.muted;
   const first = entries[0];
   const last = entries[entries.length - 1];
   context.fillText(formatShortDate(first.date), padding.left, cssHeight - 14);
   context.textAlign = "right";
   context.fillText(formatShortDate(last.date), cssWidth - padding.right, cssHeight - 14);
   context.textAlign = "left";
+}
+
+function getChartColors() {
+  const styles = getComputedStyle(document.documentElement);
+  const isDark = document.documentElement.dataset.theme === "dark";
+
+  return {
+    line: styles.getPropertyValue("--line").trim() || "#dce8e4",
+    muted: styles.getPropertyValue("--muted").trim() || "#687874",
+    brand: styles.getPropertyValue("--brand").trim() || "#0f8f7c",
+    panel: styles.getPropertyValue("--panel").trim() || "#ffffff",
+    idealFill: isDark ? "rgba(255, 122, 92, 0.14)" : "rgba(53, 173, 114, 0.08)",
+  };
 }
 
 function getHealthStatus(person) {
