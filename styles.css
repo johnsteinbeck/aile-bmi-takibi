@@ -98,9 +98,23 @@ h1 {
 }
 
 .monthly-leaders h2 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 1rem;
   line-height: 1.25;
+}
+
+.monthly-prize {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(53, 173, 114, 0.13);
+  color: #14633d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .monthly-leaders table {

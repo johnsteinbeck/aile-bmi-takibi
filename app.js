@@ -29,6 +29,8 @@ const ADULT_BMI = {
   obeseClass3: 40,
 };
 
+const MONTHLY_LOSS_PRIZE = 1000;
+
 const QUOTE_SOURCE =
   "Tartı yalan söylemez. Buzdolabını açmak bir aktivite değildir. Aç değilsin. Sadece mutfağın önünden geçiyorsun. Tartıdan kaçmak, sonucu değiştirmez. Her gün 500 kalori fazla, 15 günde 1 kilo aldırır. 1 kutu kola ≈ 7-8 küp şeker demek. Bir tabak patates kızartması ≈ 1 saat yürüyüş demek. 100 g sütlü çikolata ≈ 500 kalori. 1 kilo 7700 kaloriye denk gelir. Aç değilsin sadece canın sıkılıyor. Elindeki ekmeği sessizce yerine bırak. Kimse fark etmedi. Ekmeği tamamen bırak. Ekmeği dün bırakmadın bugün bırak. Son öğünde bir dilim ekmek yedin yemesen aç kalmazdın. Neden ekmek yiyiyorum diye sor kendine. Tebrikler ekmeği bıraktın. Küçük alışkanlıklar büyük değişimler üretir. 10 dakikalık yürüyüş bile iştahı azaltır. Susuzluk bazen açlık gibi hissedilebilir BOL SU İÇ. Acıktın mı o zaman su iç. Hedefine az kaldı bugün başlarsan. Sadece tadına bakacağım yasaklı bir söz unutma. Hedef kilon seni bekliyor. Bugün başlamak için mükemmel gün. Her öğün yeni bir başlangıçtır. 500 kaloriyi yemek 5 dakika, yakmak saatler sürebilir. Ekmek olmadan da yemek yenebilir. Bir tabak salata, bir avuç cipsle aynı kalori. Her öğünde 4 dilim ekmeği çıkarırsan günde yaklaşık 840 kalori demek yani 1 haftada bir kilo verirsin. Her öğün iki dilim ekmek yememek 6 ayda 10 kiloya denk gelir. Kalori açığı oluştur.";
 
@@ -537,6 +539,7 @@ function getMonthlyWeightChange(person, monthStartValue, nextMonthStartValue) {
   const latest = monthEntries[monthEntries.length - 1];
 
   return {
+    personId: person.id,
     name: person.name,
     delta: latest.kg - baseline.kg,
   };
@@ -1048,7 +1051,9 @@ function getRewardSummary(person) {
   const normalReward = normalDays * 3;
   const loss = getWeightLossReward(person);
   const gainPenalty = getWeightGainPenalty(person);
-  const rawTotal = weeklyReward + normalReward + loss.baseReward + loss.proximityBonus - gainPenalty.amount;
+  const monthlyPrize = getMonthlyLossPrize(person);
+  const rawTotal =
+    weeklyReward + normalReward + loss.baseReward + loss.proximityBonus + monthlyPrize.amount - gainPenalty.amount;
 
   return {
     weeklyCount,
@@ -1061,12 +1066,56 @@ function getRewardSummary(person) {
     proximityBonus: loss.proximityBonus,
     gainedKg: gainPenalty.kg,
     gainPenalty: gainPenalty.amount,
+    monthlyPrizeCount: monthlyPrize.count,
+    monthlyPrize: monthlyPrize.amount,
     total: Math.max(0, rawTotal),
   };
 }
 
 function getEntryWeekCount(person) {
   return new Set(person.weights.map((entry) => getWeekKey(entry.date))).size;
+}
+
+function getMonthlyLossPrize(person) {
+  const wins = getCompletedMonthlyLossWinners().filter((winner) => winner.personId === person.id).length;
+  return {
+    count: wins,
+    amount: wins * MONTHLY_LOSS_PRIZE,
+  };
+}
+
+function getCompletedMonthlyLossWinners() {
+  const currentMonthKey = getTodayInputValue().slice(0, 7);
+  const monthKeys = new Set();
+
+  state.people.forEach((person) => {
+    person.weights.forEach((entry) => {
+      const monthKey = entry.date.slice(0, 7);
+      if (monthKey < currentMonthKey) monthKeys.add(monthKey);
+    });
+  });
+
+  return [...monthKeys].sort().map(getMonthlyLossWinner).filter(Boolean);
+}
+
+function getMonthlyLossWinner(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const monthStartValue = `${monthKey}-01`;
+  const nextMonthStartValue = dateToInputValue(new Date(year, month, 1, 12));
+  const winner = state.people
+    .map((person) => getMonthlyWeightChange(person, monthStartValue, nextMonthStartValue))
+    .filter(Boolean)
+    .filter((change) => change.delta < 0)
+    .sort((a, b) => a.delta - b.delta || a.name.localeCompare(b.name, "tr"))[0];
+
+  return winner
+    ? {
+        personId: winner.personId,
+        name: winner.name,
+        monthKey,
+        amount: Math.abs(winner.delta),
+      }
+    : null;
 }
 
 function getWeightLossReward(person) {
@@ -1215,13 +1264,14 @@ function getRewardCardText(rewards) {
   if (rewards.weeklyReward) parts.push(`${rewards.weeklyCount} hafta`);
   if (rewards.normalReward) parts.push(`${rewards.normalDays} normal gün`);
   if (rewards.lossReward) parts.push(`${formatKg(rewards.lossKg)} düşüş`);
+  if (rewards.monthlyPrize) parts.push(`${rewards.monthlyPrizeCount} aylık ödül`);
   if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} kilo alma cezası`);
   return parts.length ? parts.join(" · ") : "Veri girerek ödül başlar";
 }
 
 function getRewardDetailText(rewards) {
   const penaltyText = rewards.gainPenalty ? `-${formatCurrency(rewards.gainPenalty)}` : formatCurrency(0);
-  return `Haftalık Kilo Girişi (${rewards.weeklyCount} hafta): ${formatCurrency(rewards.weeklyReward)} · İdeal kiloda kalınan gün (${rewards.normalDays} gün): ${formatCurrency(rewards.normalReward)} · Kilo verme ödülü (${formatKg(rewards.lossKg)}): ${formatCurrency(rewards.lossReward)} · İdeal kiloya yaklaşma bonusu (+%${formatNumber(rewards.proximityPercent)}): ${formatCurrency(rewards.proximityBonus)} · Kilo alma cezası (${formatKg(rewards.gainedKg)}): ${penaltyText}`;
+  return `Haftalık Kilo Girişi (${rewards.weeklyCount} hafta): ${formatCurrency(rewards.weeklyReward)} · İdeal kiloda kalınan gün (${rewards.normalDays} gün): ${formatCurrency(rewards.normalReward)} · Kilo verme ödülü (${formatKg(rewards.lossKg)}): ${formatCurrency(rewards.lossReward)} · İdeal kiloya yaklaşma bonusu (+%${formatNumber(rewards.proximityPercent)}): ${formatCurrency(rewards.proximityBonus)} · Aylık ödül (${rewards.monthlyPrizeCount} ay): ${formatCurrency(rewards.monthlyPrize)} · Kilo alma cezası (${formatKg(rewards.gainedKg)}): ${penaltyText}`;
 }
 
 function renderCalories(person) {
