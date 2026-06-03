@@ -58,7 +58,7 @@ const els = {
   totalPeople: document.querySelector("#totalPeople"),
   trackedPeople: document.querySelector("#trackedPeople"),
   healthyPeople: document.querySelector("#healthyPeople"),
-  latestEntry: document.querySelector("#latestEntry"),
+  familyLossTarget: document.querySelector("#familyLossTarget"),
   monthLoserName: document.querySelector("#monthLoserName"),
   monthLoserAmount: document.querySelector("#monthLoserAmount"),
   monthGainerName: document.querySelector("#monthGainerName"),
@@ -549,14 +549,12 @@ function renderSummary() {
     const status = getHealthStatus(person);
     return status.label === "İdeal";
   });
-  const latest = state.people
-    .flatMap((person) => person.weights.map((entry) => ({ ...entry, name: person.name })))
-    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  const familyLossTarget = state.people.reduce((total, person) => total + getWeightToLose(person), 0);
 
   els.totalPeople.textContent = state.people.length;
   els.trackedPeople.textContent = tracked.length;
   els.healthyPeople.textContent = healthy.length;
-  els.latestEntry.textContent = latest ? formatShortDate(latest.date) : "-";
+  els.familyLossTarget.textContent = formatKg(familyLossTarget);
 }
 
 function renderMonthlyLeaders() {
@@ -1291,6 +1289,16 @@ function isAboveIdealWeightForPerson(person, kg, asOfDate) {
   if (!height) return false;
   const range = getIdealBmiRange(person, asOfDate);
   return calculateBmiForWeight(kg, height) >= range.high;
+}
+
+function getWeightToLose(person) {
+  const latestWeight = getLatestWeight(person);
+  if (!latestWeight) return 0;
+
+  const targetWeight = getIdealUpperWeight(person, latestWeight.date);
+  if (!targetWeight) return 0;
+
+  return Math.max(0, latestWeight.kg - targetWeight);
 }
 
 function getIdealUpperWeight(person, asOfDate) {
