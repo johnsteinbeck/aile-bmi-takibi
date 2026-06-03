@@ -18,19 +18,19 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #1b1024;
-  --panel: #2b1a2f;
-  --panel-soft: #351f38;
-  --ink: #fff6ea;
-  --muted: #d7b8c7;
-  --line: #54324e;
-  --brand: #ff7a5c;
-  --brand-dark: #ffb08f;
-  --green: #85e3a1;
-  --yellow: #ffd166;
-  --red: #ff6f91;
-  --blue: #86d4ff;
-  --shadow: 0 20px 58px rgba(28, 7, 31, 0.48);
+  --bg: #0b0d0e;
+  --panel: #151819;
+  --panel-soft: #1d2122;
+  --ink: #f4f6f5;
+  --muted: #9ca7a4;
+  --line: #2c3334;
+  --brand: #2dd4bf;
+  --brand-dark: #8ee9dd;
+  --green: #4ade80;
+  --yellow: #facc15;
+  --red: #fb7185;
+  --blue: #60a5fa;
+  --shadow: 0 20px 58px rgba(0, 0, 0, 0.42);
   color-scheme: dark;
 }
 
@@ -48,10 +48,7 @@ body {
 }
 
 :root[data-theme="dark"] body {
-  background:
-    linear-gradient(135deg, rgba(255, 122, 92, 0.16), transparent 34%),
-    linear-gradient(225deg, rgba(134, 212, 255, 0.1), transparent 42%),
-    linear-gradient(180deg, #2a1431, var(--bg));
+  background: linear-gradient(180deg, #050606, var(--bg));
 }
 
 :root[data-theme="dark"] .monthly-leaders,
@@ -62,18 +59,18 @@ body {
 :root[data-theme="dark"] .profile-summary,
 :root[data-theme="dark"] .meter-pointer::before,
 :root[data-theme="dark"] .meter-ideal-bound {
-  background: rgba(43, 26, 47, 0.88);
+  background: rgba(21, 24, 25, 0.9);
 }
 
 :root[data-theme="dark"] .icon-button.ghost {
-  background: rgba(43, 26, 47, 0.92);
+  background: rgba(21, 24, 25, 0.94);
 }
 
 :root[data-theme="dark"] input,
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] .chart-wrap,
 :root[data-theme="dark"] .history-list li {
-  background: #241528;
+  background: #101314;
 }
 
 :root[data-theme="dark"] .status-chip.green,
@@ -83,7 +80,7 @@ body {
 :root[data-theme="dark"] .bmi-value.green,
 :root[data-theme="dark"] .meter-ideal-bound,
 :root[data-theme="dark"] .monthly-prize {
-  color: #a7f3bb;
+  color: #a7f3d0;
 }
 
 :root[data-theme="dark"] .status-chip.yellow,
@@ -100,26 +97,26 @@ body {
 }
 
 :root[data-theme="dark"] .delete-record {
-  background: rgba(255, 111, 145, 0.13);
+  background: rgba(251, 113, 133, 0.12);
 }
 
 :root[data-theme="dark"] .monthly-prize,
 :root[data-theme="dark"] .reward-line {
-  background: rgba(255, 122, 92, 0.12);
+  background: rgba(45, 212, 191, 0.12);
 }
 
 :root[data-theme="dark"] .monthly-prize {
-  color: #ffd6c8;
+  color: #c5fff7;
 }
 
 :root[data-theme="dark"] .reward-line,
 :root[data-theme="dark"] .reward-panel {
-  border-color: rgba(255, 122, 92, 0.28);
+  border-color: rgba(45, 212, 191, 0.24);
 }
 
 :root[data-theme="dark"] .reward-panel strong,
 :root[data-theme="dark"] .reward-total {
-  color: #ffd6c8;
+  color: #c5fff7;
 }
 
 :root[data-theme="dark"] .storage-status.online {
@@ -129,10 +126,7 @@ body {
 }
 
 :root[data-theme="dark"] .profile-panel {
-  background:
-    linear-gradient(160deg, rgba(255, 122, 92, 0.18), transparent 56%),
-    linear-gradient(24deg, rgba(134, 212, 255, 0.1), transparent 70%),
-    var(--panel-soft);
+  background: var(--panel-soft);
 }
 
 button,
@@ -189,6 +183,42 @@ h1 {
   font-size: clamp(0.94rem, 2.5vw, 1.08rem);
   font-weight: 750;
   line-height: 1.45;
+}
+
+.theme-control {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 28px rgba(31, 53, 48, 0.07);
+}
+
+.theme-control button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 10px;
+}
+
+.theme-control button.active {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .theme-control {
+  background: rgba(21, 24, 25, 0.88);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .theme-control button.active {
+  color: #061111;
 }
 
 .monthly-leaders {

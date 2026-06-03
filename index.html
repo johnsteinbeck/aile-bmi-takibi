@@ -6,11 +6,18 @@
     <title>Ödüllü Aile Kilo Takibi</title>
     <script>
       (() => {
+        const choices = ["auto", "light", "dark"];
+        let choice = "auto";
+        try {
+          const saved = localStorage.getItem("aile-bmi-theme-choice");
+          if (choices.includes(saved)) choice = saved;
+        } catch (error) {}
         const hour = new Date().getHours();
-        document.documentElement.dataset.theme = hour >= 18 || hour < 6 ? "dark" : "light";
+        document.documentElement.dataset.theme = choice === "auto" ? (hour >= 18 || hour < 8 ? "dark" : "light") : choice;
+        document.documentElement.dataset.themeChoice = choice;
       })();
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260603-4" />
+    <link rel="stylesheet" href="styles.css?v=20260603-6" />
   </head>
   <body>
     <main class="app-shell">
@@ -19,6 +26,11 @@
           <p class="eyebrow">Ortak aile paneli</p>
           <h1 id="page-title">Ödüllü Aile Kilo Takibi</h1>
           <p class="daily-quote" id="dailyQuote"></p>
+          <div class="theme-control" aria-label="Tema seçimi" role="group">
+            <button type="button" data-theme-choice="auto">Oto</button>
+            <button type="button" data-theme-choice="light">Açık</button>
+            <button type="button" data-theme-choice="dark">Koyu</button>
+          </div>
         </div>
         <aside class="monthly-leaders" aria-labelledby="monthlyLeadersTitle">
           <h2 id="monthlyLeadersTitle">Ayın en çok kilo vereni ve alanı</h2>
@@ -204,8 +216,8 @@
       </article>
     </template>
 
-    <script src="config.js?v=20260603-4"></script>
-    <script src="cdc-bmi-data.js?v=20260603-4"></script>
-    <script src="app.js?v=20260603-4"></script>
+    <script src="config.js?v=20260603-6"></script>
+    <script src="cdc-bmi-data.js?v=20260603-6"></script>
+    <script src="app.js?v=20260603-6"></script>
   </body>
 </html>

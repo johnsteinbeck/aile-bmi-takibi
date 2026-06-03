@@ -1,6 +1,8 @@
 const STORAGE_KEY = "aile-bmi-takibi-v2";
 const DARK_MODE_START_HOUR = 18;
-const DARK_MODE_END_HOUR = 6;
+const DARK_MODE_END_HOUR = 8;
+const THEME_STORAGE_KEY = "aile-bmi-theme-choice";
+const THEME_CHOICES = ["auto", "light", "dark"];
 
 const DEFAULT_PEOPLE = [
   "Mehmet",
@@ -44,6 +46,7 @@ const state = {
   people: [],
   selectedId: null,
   query: "",
+  themeChoice: getStoredThemeChoice(),
 };
 
 let dataStore;
@@ -93,6 +96,7 @@ const els = {
   importFile: document.querySelector("#importFile"),
   storageStatus: document.querySelector("#storageStatus"),
   dailyQuote: document.querySelector("#dailyQuote"),
+  themeButtons: document.querySelectorAll("button[data-theme-choice]"),
 };
 
 els.addPersonForm.addEventListener("submit", addPerson);
@@ -108,6 +112,9 @@ els.importData.addEventListener("click", () => els.importFile.click());
 els.importFile.addEventListener("change", importData);
 els.editProfile.addEventListener("click", showProfileForm);
 els.genderInput.addEventListener("change", updateProfileFieldsForSpecies);
+els.themeButtons.forEach((button) => {
+  button.addEventListener("click", () => setThemeChoice(button.dataset.themeChoice));
+});
 window.addEventListener("resize", () => renderChart(getSelectedPerson()));
 window.addEventListener("focus", () => {
   syncDateInput();
@@ -148,17 +155,48 @@ function setWelcomeQuote() {
 }
 
 function syncScheduledTheme() {
-  const theme = getScheduledTheme();
+  const theme = getEffectiveTheme();
   const previousTheme = document.documentElement.dataset.theme;
 
+  document.documentElement.dataset.themeChoice = state.themeChoice;
+  updateThemeButtons();
   if (previousTheme === theme) return;
   document.documentElement.dataset.theme = theme;
   renderChart(getSelectedPerson());
 }
 
+function getEffectiveTheme() {
+  return state.themeChoice === "auto" ? getScheduledTheme() : state.themeChoice;
+}
+
 function getScheduledTheme(date = new Date()) {
   const hour = date.getHours();
   return hour >= DARK_MODE_START_HOUR || hour < DARK_MODE_END_HOUR ? "dark" : "light";
+}
+
+function setThemeChoice(choice) {
+  if (!THEME_CHOICES.includes(choice)) return;
+  state.themeChoice = choice;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, choice);
+  } catch (error) {}
+  syncScheduledTheme();
+}
+
+function getStoredThemeChoice() {
+  try {
+    const choice = localStorage.getItem(THEME_STORAGE_KEY);
+    if (THEME_CHOICES.includes(choice)) return choice;
+  } catch (error) {}
+  return "auto";
+}
+
+function updateThemeButtons() {
+  els.themeButtons.forEach((button) => {
+    const isActive = button.dataset.themeChoice === state.themeChoice;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 async function init() {
