@@ -1124,7 +1124,7 @@ function getRewardSummary(person) {
   const weeklyCount = getEntryWeekCount(person);
   const weeklyReward = weeklyCount * 50;
   const normalDays = getNormalBmiDays(person);
-  const normalReward = normalDays * 3;
+  const normalReward = normalDays * 7;
   const loss = getWeightLossReward(person);
   const gainPenalty = getWeightGainPenalty(person);
   const monthlyPrize = getMonthlyLossPrize(person);
