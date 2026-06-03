@@ -1,7 +1,6 @@
 const STORAGE_KEY = "aile-bmi-takibi-v2";
 const DARK_MODE_START_HOUR = 18;
 const DARK_MODE_END_HOUR = 8;
-const WEEKLY_REWARD_DAYS = 7;
 const THEME_STORAGE_KEY = "aile-bmi-theme-choice";
 const THEME_CHOICES = ["auto", "light", "dark"];
 
@@ -1152,24 +1151,18 @@ function getRewardSummary(person) {
 }
 
 function getEntryWeekCount(person) {
-  return Math.max(0, getWeeklyRewardCheckpoints(person).length - 1);
+  return getWeeklyRewardCheckpoints(person).length;
 }
 
 function getWeeklyRewardCheckpoints(person) {
   const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (!entries.length) return [];
+  const weeklyEntries = new Map();
 
-  const checkpoints = [entries[0]];
-  let lastRewardDay = dateToDayNumber(entries[0].date);
-
-  entries.slice(1).forEach((entry) => {
-    const entryDay = dateToDayNumber(entry.date);
-    if (entryDay - lastRewardDay < WEEKLY_REWARD_DAYS) return;
-    checkpoints.push(entry);
-    lastRewardDay = entryDay;
+  entries.forEach((entry) => {
+    weeklyEntries.set(getWeekKey(entry.date), entry);
   });
 
-  return checkpoints;
+  return [...weeklyEntries.values()];
 }
 
 function getMonthlyLossPrize(person) {
@@ -1371,7 +1364,7 @@ function getRewardCardText(rewards) {
   if (rewards.lossReward) parts.push(`${formatKg(rewards.lossKg)} düşüş`);
   if (rewards.monthlyPrize) parts.push(`${rewards.monthlyPrizeCount} aylık ödül`);
   if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} kilo alma cezası`);
-  return parts.length ? parts.join(" · ") : "Haftalık ödül için 7 gün beklenir";
+  return parts.length ? parts.join(" · ") : "Her hafta 1 kilo girişi ödüllenir";
 }
 
 function getRewardDetailText(rewards) {
@@ -1565,6 +1558,16 @@ function formatLongDate(value) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function getWeekKey(value) {
+  const date = new Date(`${value}T12:00:00`);
+  const temp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = temp.getUTCDay() || 7;
+  temp.setUTCDate(temp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((temp - yearStart) / 86400000 + 1) / 7);
+  return `${temp.getUTCFullYear()}-${String(week).padStart(2, "0")}`;
 }
 
 function dateToDayNumber(value) {
