@@ -1,6 +1,7 @@
 const STORAGE_KEY = "aile-bmi-takibi-v2";
 const DARK_MODE_START_HOUR = 18;
 const DARK_MODE_END_HOUR = 8;
+const WEEKLY_REWARD_DAYS = 7;
 const THEME_STORAGE_KEY = "aile-bmi-theme-choice";
 const THEME_CHOICES = ["auto", "light", "dark"];
 
@@ -1151,7 +1152,24 @@ function getRewardSummary(person) {
 }
 
 function getEntryWeekCount(person) {
-  return new Set(person.weights.map((entry) => getWeekKey(entry.date))).size;
+  return Math.max(0, getWeeklyRewardCheckpoints(person).length - 1);
+}
+
+function getWeeklyRewardCheckpoints(person) {
+  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (!entries.length) return [];
+
+  const checkpoints = [entries[0]];
+  let lastRewardDay = dateToDayNumber(entries[0].date);
+
+  entries.slice(1).forEach((entry) => {
+    const entryDay = dateToDayNumber(entry.date);
+    if (entryDay - lastRewardDay < WEEKLY_REWARD_DAYS) return;
+    checkpoints.push(entry);
+    lastRewardDay = entryDay;
+  });
+
+  return checkpoints;
 }
 
 function getMonthlyLossPrize(person) {
@@ -1197,13 +1215,13 @@ function getMonthlyLossWinner(monthKey) {
 }
 
 function getWeightLossReward(person) {
-  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (entries.length < 2) {
+  const checkpoints = getWeeklyRewardCheckpoints(person);
+  if (checkpoints.length < 2) {
     return { kg: 0, baseReward: 0, proximityPercent: 0, proximityBonus: 0 };
   }
 
-  const first = entries[0];
-  const latest = entries[entries.length - 1];
+  const first = checkpoints[0];
+  const latest = checkpoints[checkpoints.length - 1];
   const startTargetWeight = getIdealUpperWeight(person, first.date);
   const latestTargetWeight = getIdealUpperWeight(person, latest.date);
   if (!startTargetWeight || !latestTargetWeight || first.kg <= startTargetWeight) {
@@ -1227,12 +1245,13 @@ function getWeightLossReward(person) {
 }
 
 function getWeightGainPenalty(person) {
-  const entries = [...person.weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (entries.length < 2) return { kg: 0, amount: 0 };
+  const checkpoints = getWeeklyRewardCheckpoints(person);
+  if (checkpoints.length < 2) return { kg: 0, amount: 0 };
 
-  const gainedKg = entries.reduce((total, entry, index) => {
+  const gainedKg = checkpoints.reduce((total, entry, index) => {
     if (index === 0) return total;
-    const previous = entries[index - 1];
+    if (!isAboveIdealWeightForPerson(person, entry.kg, entry.date)) return total;
+    const previous = checkpoints[index - 1];
     return total + Math.max(0, entry.kg - previous.kg);
   }, 0);
 
@@ -1271,6 +1290,14 @@ function isIdealWeightForPerson(person, kg, asOfDate) {
   const range = getIdealBmiRange(person, asOfDate);
   const bmi = calculateBmiForWeight(kg, height);
   return bmi >= range.low && bmi < range.high;
+}
+
+function isAboveIdealWeightForPerson(person, kg, asOfDate) {
+  if (isCat(person)) return kg >= 10;
+  const height = Number(person.heightCm);
+  if (!height) return false;
+  const range = getIdealBmiRange(person, asOfDate);
+  return calculateBmiForWeight(kg, height) >= range.high;
 }
 
 function getIdealUpperWeight(person, asOfDate) {
@@ -1344,7 +1371,7 @@ function getRewardCardText(rewards) {
   if (rewards.lossReward) parts.push(`${formatKg(rewards.lossKg)} düşüş`);
   if (rewards.monthlyPrize) parts.push(`${rewards.monthlyPrizeCount} aylık ödül`);
   if (rewards.gainPenalty) parts.push(`${formatKg(rewards.gainedKg)} kilo alma cezası`);
-  return parts.length ? parts.join(" · ") : "Veri girerek ödül başlar";
+  return parts.length ? parts.join(" · ") : "Haftalık ödül için 7 gün beklenir";
 }
 
 function getRewardDetailText(rewards) {
@@ -1538,16 +1565,6 @@ function formatLongDate(value) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
-}
-
-function getWeekKey(value) {
-  const date = new Date(`${value}T12:00:00`);
-  const temp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = temp.getUTCDay() || 7;
-  temp.setUTCDate(temp.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((temp - yearStart) / 86400000 + 1) / 7);
-  return `${temp.getUTCFullYear()}-${String(week).padStart(2, "0")}`;
 }
 
 function dateToDayNumber(value) {
