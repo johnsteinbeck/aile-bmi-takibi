@@ -3,93 +3,252 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Pizzeria Tov premium QR menüsü - gerçek Napoli ruhu, odun ateşi lezzeti."
-    />
-    <meta name="theme-color" content="#172018" />
-    <title>Pizzeria Tov | Menü</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="config.js"></script>
-    <script src="app.js" defer></script>
+    <title>Ödüllü Aile Kilo Takibi</title>
+    <script>
+      (() => {
+        const choices = ["auto", "light", "dark"];
+        let choice = "auto";
+        try {
+          const saved = localStorage.getItem("aile-bmi-theme-choice");
+          if (choices.includes(saved)) choice = saved;
+        } catch (error) {}
+        const hour = new Date().getHours();
+        document.documentElement.dataset.theme = choice === "auto" ? (hour >= 18 || hour < 8 ? "dark" : "light") : choice;
+        document.documentElement.dataset.themeChoice = choice;
+      })();
+    </script>
+    <link rel="stylesheet" href="styles.css?v=20260604-3" />
   </head>
   <body>
-    <a class="skip-link" href="#menu" data-i18n="nav.skip">Menüye geç</a>
-
-    <header class="topbar" aria-label="Pizzeria Tov">
-      <a class="brand-mark" href="#menu" aria-label="Pizzeria Tov">
-        <span class="brand-seal" aria-hidden="true">PT</span>
-        <span>Pizzeria Tov</span>
-      </a>
-
-      <nav class="desktop-nav" aria-label="Ana navigasyon">
-        <a href="#menu" data-i18n="nav.menu">Menü</a>
-        <a href="#visit" data-i18n="nav.visit">İletişim</a>
-      </nav>
-
-      <div class="language-switch" aria-label="Dil seçimi">
-        <button class="language-button is-active" type="button" data-language="tr" aria-pressed="true">
-          TR
-        </button>
-        <button class="language-button" type="button" data-language="en" aria-pressed="false">
-          EN
-        </button>
-      </div>
-    </header>
-
-    <main>
-      <section class="menu-section section-pad first-section" id="menu">
-        <div class="section-intro menu-heading">
-          <p class="eyebrow" data-i18n="menu.eyebrow">Menu della casa</p>
-          <h1 class="menu-title" data-i18n="menu.title">Pizzeria Tov Menüsü</h1>
+    <main class="app-shell">
+      <section class="topbar" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Ortak aile paneli</p>
+          <h1 id="page-title">Ödüllü Aile Kilo Takibi</h1>
+          <p class="daily-quote" id="dailyQuote"></p>
         </div>
-
-        <div class="filter-shell">
-          <div class="filter-bar" id="categoryFilters" role="tablist" aria-label="Menü kategorileri"></div>
-        </div>
-
-        <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+        <aside class="monthly-leaders" aria-labelledby="monthlyLeadersTitle">
+          <h2 id="monthlyLeadersTitle">Ayın en çok kilo vereni ve alanı</h2>
+          <p class="monthly-prize">Aylık ödül 1000 TL</p>
+          <table>
+            <tbody>
+              <tr>
+                <th scope="row">Kilo Veren 💰</th>
+                <td id="monthLoserName">Kimse yok</td>
+                <td id="monthLoserAmount">0 kg</td>
+              </tr>
+              <tr>
+                <th scope="row">Kilo Alan ❌</th>
+                <td id="monthGainerName">Kimse yok</td>
+                <td id="monthGainerAmount">0 kg</td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
       </section>
 
-      <section class="visit section-pad" id="visit">
-        <div class="section-intro">
-          <h2 data-i18n="visit.title">İletişim &amp; Konum</h2>
-        </div>
+      <section class="view-tabs" aria-label="Bölümler">
+        <button class="active" type="button" data-view-tab="tracking">Aile takibi</button>
+        <button type="button" data-view-tab="meals">Öğün menüsü</button>
+      </section>
 
-        <div class="contact-details" aria-label="Pizzeria Tov iletişim bilgileri">
-          <a class="contact-detail" id="phoneLink" href="#">
-            <span data-i18n="visit.phoneLabel">Telefon</span>
-            <strong id="phoneText">0546 860 04 2</strong>
-          </a>
-          <div class="contact-detail">
-            <span data-i18n="visit.hoursLabel">Çalışma saatleri</span>
-            <strong class="hours-text" id="hoursText">Pazartesi: Kapalı<br />Salı - Cuma: 12.00 - 20.00<br />Cumartesi - Pazar: 14.00 - 20.00</strong>
+      <section class="tab-view" id="trackingView">
+        <section class="sort-controls" aria-label="Sıralama">
+          <span>Sırala</span>
+          <div class="segmented-control sort-buttons" role="group" aria-label="Kişileri sırala">
+            <button class="active" type="button" data-sort-choice="age">Yaş</button>
+            <button type="button" data-sort-choice="weight">Kilo</button>
+            <button type="button" data-sort-choice="ideal">İdeal</button>
+          </div>
+        </section>
+
+        <section class="people-grid" id="peopleGrid" aria-label="Aile üyeleri"></section>
+
+        <section class="add-person-section" aria-label="Yeni kişi ekleme">
+          <form class="add-person" id="addPersonForm">
+            <label for="personName">Yeni kişi</label>
+            <div class="input-row">
+              <input id="personName" name="personName" type="text" autocomplete="off" placeholder="İsim" />
+              <button type="submit" aria-label="Kişi ekle" title="Kişi ekle">
+                <span aria-hidden="true">+</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="summary-strip" aria-label="Özet">
+          <article>
+            <span id="totalPeople">0</span>
+            <p>Kişi</p>
+          </article>
+          <article>
+            <span id="trackedPeople">0</span>
+            <p>Aktif kayıt</p>
+          </article>
+          <article>
+            <span id="healthyPeople">0</span>
+            <p>İdeal aralık</p>
+          </article>
+          <article>
+            <span id="familyLossTarget">0 kg</span>
+            <p>Ailenin toplam kilo fazlası</p>
+          </article>
+        </section>
+
+        <section class="controls" aria-label="Kişi arama">
+          <label class="search-field" for="searchPeople">
+            <span>Arama</span>
+            <input id="searchPeople" type="search" placeholder="İsim ara" />
+          </label>
+        </section>
+      </section>
+
+      <section class="meal-menu-view tab-view" id="mealMenuView" hidden aria-labelledby="mealMenuTitle">
+        <div class="meal-menu-head">
+          <div>
+            <p class="eyebrow">Günlük öneri</p>
+            <h2 id="mealMenuTitle">Öğün menüsü</h2>
+          </div>
+          <span id="mealMenuDate"></span>
+        </div>
+        <div class="meal-plan-grid" id="mealPlanGrid"></div>
+      </section>
+
+      <section class="data-tools-section" aria-label="Veri araçları">
+        <div class="theme-footer">
+          <span>Tema</span>
+          <div class="segmented-control theme-control" aria-label="Tema seçimi" role="group">
+            <button type="button" data-theme-choice="auto">Oto</button>
+            <button type="button" data-theme-choice="light">Açık</button>
+            <button type="button" data-theme-choice="dark">Koyu</button>
           </div>
         </div>
-
-        <div class="contact-actions">
-          <a class="button button-primary" id="locationWhatsappLink" href="#" target="_blank" rel="noreferrer" data-i18n="visit.whatsapp">
-            WhatsApp
-          </a>
-          <a class="button button-secondary" id="mapLink" href="#" target="_blank" rel="noreferrer" data-i18n="visit.maps">
-            Konum
-          </a>
-          <a class="button button-tertiary" id="instagramLink" href="#" target="_blank" rel="noreferrer">
-            Instagram
-          </a>
+        <div class="toolbar">
+          <button class="icon-button" id="exportData" type="button" aria-label="Yedek indir" title="Yedek indir">
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="icon-button" id="importData" type="button" aria-label="Yedek yükle" title="Yedek yükle">
+            <span aria-hidden="true">↑</span>
+          </button>
+          <input id="importFile" type="file" accept="application/json" hidden />
+          <span class="storage-status" id="storageStatus">Hazırlanıyor</span>
         </div>
       </section>
     </main>
 
-    <footer class="footer">
-      <p>Pizzeria Tov</p>
-      <span data-i18n="footer.copy">Gerçek Napoli Pizzası.</span>
-    </footer>
+    <dialog class="person-dialog" id="personDialog">
+      <form method="dialog" class="dialog-close-form">
+        <button class="icon-button ghost" id="dialogClose" type="button" aria-label="Kapat" title="Kapat">
+          <span aria-hidden="true">×</span>
+        </button>
+      </form>
 
-    <nav class="mobile-bottom-nav" aria-label="Mobil hızlı menü">
-      <a href="#menu" data-i18n="mobileNav.menu">Menü</a>
-      <a href="#visit" data-i18n="mobileNav.visit">İletişim</a>
-    </nav>
+      <div class="dialog-layout">
+        <section class="profile-panel" aria-labelledby="dialogName">
+          <p class="eyebrow">Kişi kaydı</p>
+          <h2 id="dialogName"></h2>
+          <p class="dialog-bmi" id="dialogBmi">Durum -</p>
+          <div class="meter wide" aria-hidden="true">
+            <div class="meter-track">
+              <span class="meter-pointer" id="dialogPointer"></span>
+            </div>
+          </div>
+          <p class="recommendation" id="dialogRecommendation"></p>
+          <div class="calorie-panel" id="caloriePanel" aria-live="polite">
+            <span id="calorieTitle">Günlük kalori hedefi</span>
+            <strong id="calorieTarget">--</strong>
+            <p id="calorieNote"></p>
+          </div>
+          <div class="reward-panel" id="rewardPanel" aria-live="polite">
+            <span>Toplam kazanç</span>
+            <strong id="rewardTotal">0 TL</strong>
+            <p id="rewardBreakdown"></p>
+          </div>
+
+          <div class="profile-summary" id="profileSummary" hidden>
+            <span>Profil bilgileri kaydedildi</span>
+            <p id="profileSummaryText"></p>
+            <button class="text-button" id="editProfile" type="button">Profili düzenle</button>
+          </div>
+
+          <form class="profile-form" id="profileForm">
+            <label class="human-field">
+              Doğum tarihi
+              <input id="birthDateInput" name="birthDate" type="date" />
+            </label>
+            <label class="human-field">
+              Boy (cm)
+              <input id="heightInput" name="height" type="number" inputmode="decimal" min="60" max="240" step="0.1" />
+            </label>
+            <label>
+              Cinsiyet
+              <select id="genderInput" name="gender">
+                <option value="">Seç</option>
+                <option value="kadın">Kadın</option>
+                <option value="erkek">Erkek</option>
+                <option value="kedi">Kedi</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Profili kaydet</button>
+          </form>
+        </section>
+
+        <section class="tracking-panel" aria-label="Kilo takibi">
+          <form class="weight-form" id="weightForm">
+            <label>
+              Tarih
+              <input id="dateInput" name="date" type="date" readonly />
+            </label>
+            <label>
+              Kilo (kg)
+              <input id="weightInput" name="weight" type="number" inputmode="decimal" min="0.5" max="300" step="0.1" />
+            </label>
+            <button class="primary-button" type="submit">Kilo ekle</button>
+          </form>
+
+          <div class="chart-wrap">
+            <canvas id="weightChart" width="720" height="320" aria-label="Kilo grafiği"></canvas>
+            <p class="empty-chart" id="emptyChart">Grafik için en az bir kilo kaydı gerekir.</p>
+          </div>
+
+          <div class="history-head">
+            <h3>Geçmiş</h3>
+            <button class="text-button danger" id="deletePerson" type="button">Kişiyi sil</button>
+          </div>
+          <ul class="history-list" id="historyList"></ul>
+          <button class="dialog-bottom-close text-button" id="dialogBottomClose" type="button">Kapat</button>
+        </section>
+      </div>
+    </dialog>
+
+    <template id="personCardTemplate">
+      <article class="person-card" tabindex="0">
+        <div class="card-header">
+          <div>
+            <h2></h2>
+            <p class="person-meta"></p>
+          </div>
+          <span class="status-chip"></span>
+        </div>
+        <div class="bmi-line">
+          <span class="bmi-value"></span>
+          <span class="latest-weight"></span>
+        </div>
+        <div class="meter" aria-hidden="true">
+          <div class="meter-track">
+            <span class="meter-pointer"></span>
+          </div>
+        </div>
+        <p class="recommendation"></p>
+        <div class="reward-line">
+          <span class="reward-total"></span>
+          <small class="reward-detail"></small>
+        </div>
+      </article>
+    </template>
+
+    <script src="config.js?v=20260604-3"></script>
+    <script src="cdc-bmi-data.js?v=20260604-3"></script>
+    <script src="app.js?v=20260604-3"></script>
   </body>
 </html>
