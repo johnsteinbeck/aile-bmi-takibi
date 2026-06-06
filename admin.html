@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Pizzeria Tov yönetici paneli - Supabase menü, fiyat ve fotoğraf yönetimi."
+    />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#172018" />
+    <title>Pizzeria Tov | Yönetim</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body class="admin-page">
+    <a class="skip-link" href="#admin" data-i18n="admin.skip">Yönetim paneline geç</a>
+
+    <header class="topbar" aria-label="Pizzeria Tov Yönetim">
+      <a class="brand-mark" href="index.html#menu" aria-label="Pizzeria Tov menüye dön">
+        <span class="brand-seal" aria-hidden="true">PT</span>
+        <span>Pizzeria Tov</span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Yönetim navigasyonu">
+        <a href="index.html#menu" data-i18n="nav.menu">Menü</a>
+        <a href="#admin" data-i18n="nav.admin">Yönetim</a>
+        <a href="index.html#visit" data-i18n="nav.visit">İletişim</a>
+      </nav>
+
+      <div class="language-switch" aria-label="Dil seçimi">
+        <button class="language-button is-active" type="button" data-language="tr" aria-pressed="true">
+          TR
+        </button>
+        <button class="language-button" type="button" data-language="en" aria-pressed="false">
+          EN
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="admin-panel section-pad first-section" id="admin">
+        <div class="admin-shell">
+          <div class="section-intro admin-intro">
+            <p class="eyebrow" data-i18n="admin.eyebrow">Area riservata</p>
+            <h1 data-i18n="admin.title">Yönetici paneli</h1>
+            <p data-i18n="admin.copy">
+              Pizzeria Tov menüsü Supabase veritabanından yönetilir. Ürün ekleyin, fiyatları güncelleyin, görsel yükleyin, gizleyin ya da silin.
+            </p>
+            <button class="button button-tertiary" id="adminSignOutButton" type="button" data-i18n="admin.signOutButton" hidden>
+              Çıkış Yap
+            </button>
+          </div>
+
+          <form class="admin-card admin-auth-card" id="adminAuthForm">
+            <div class="admin-card-heading">
+              <span data-i18n="admin.eyebrow">Area riservata</span>
+              <h3 data-i18n="admin.authTitle">Yönetici girişi</h3>
+            </div>
+            <p class="admin-card-copy" data-i18n="admin.authCopy">
+              Yetkili e-postanızı yazın. Supabase size güvenli giriş bağlantısı gönderir.
+            </p>
+            <label>
+              <span data-i18n="admin.emailLabel">Yönetici e-postası</span>
+              <input id="adminEmail" type="email" autocomplete="email" data-i18n-placeholder="admin.emailPlaceholder" placeholder="owner@example.com" required />
+            </label>
+            <button class="button button-primary" type="submit" data-i18n="admin.sendLinkButton">Giriş Linki Gönder</button>
+          </form>
+
+          <p class="admin-status" id="adminStatus" role="status" aria-live="polite"></p>
+
+          <div class="admin-workspace" id="adminWorkspace" hidden>
+            <div class="admin-grid">
+              <form class="admin-card admin-card-wide" id="addPizzaForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.addKicker">Nuova pizza</span>
+                  <h3 data-i18n="admin.addTitle">Yeni ürün ekle</h3>
+                </div>
+
+                <div class="admin-field-grid">
+                  <label>
+                    <span data-i18n="admin.nameLabel">Ürün adı</span>
+                    <input id="newPizzaName" type="text" placeholder="No:4 / Funghi" required />
+                  </label>
+                  <label>
+                    <span data-i18n="admin.priceLabel">Fiyat</span>
+                    <input id="newPizzaPrice" type="text" placeholder="520 ₺" required />
+                  </label>
+                </div>
+
+                <div class="admin-field-grid">
+                  <label>
+                    <span data-i18n="admin.categoryLabel">Kategori</span>
+                    <select id="newPizzaCategory">
+                      <option value="napoli" data-i18n="admin.categoryNapoli">Napoli Pizzaları</option>
+                      <option value="drinks" data-i18n="admin.categoryDrinks">İçecekler</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span data-i18n="admin.groupLabel">Menü başlığı</span>
+                    <select id="newPizzaGroup">
+                      <option value="chef" data-i18n="admin.groupChef">Şefin önerisi</option>
+                      <option value="signature" data-i18n="admin.groupSignature">İmza Pizzalar</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.ingredientsLabel">İçerikler</span>
+                  <textarea id="newPizzaIngredients" rows="5" placeholder="San Marzano domates&#10;Fesleğen&#10;Parmesan" required></textarea>
+                </label>
+
+                <label class="file-field">
+                  <span data-i18n="admin.photoFileLabel">Fotoğraf dosyası</span>
+                  <input id="newPizzaFile" type="file" accept="image/*" />
+                </label>
+
+                <button class="button button-primary" type="submit" data-i18n="admin.addButton">Ürünü Ekle</button>
+              </form>
+
+              <form class="admin-card" id="organizeForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.organizeKicker">Ordine</span>
+                  <h3 data-i18n="admin.organizeTitle">Menüyü düzenle</h3>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.productLabel">Ürün seç</span>
+                  <select id="organizeItemSelect"></select>
+                </label>
+
+                <div class="admin-field-grid">
+                  <label>
+                    <span data-i18n="admin.categoryLabel">Kategori</span>
+                    <select id="organizeCategorySelect">
+                      <option value="napoli" data-i18n="admin.categoryNapoli">Napoli Pizzaları</option>
+                      <option value="drinks" data-i18n="admin.categoryDrinks">İçecekler</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span data-i18n="admin.groupLabel">Menü başlığı</span>
+                    <select id="organizeGroupSelect">
+                      <option value="chef" data-i18n="admin.groupChef">Şefin önerisi</option>
+                      <option value="signature" data-i18n="admin.groupSignature">İmza Pizzalar</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.sortLabel">Sıra numarası</span>
+                  <input id="sortOrderInput" type="number" step="1" min="0" inputmode="numeric" />
+                </label>
+
+                <button class="button button-secondary" type="submit" data-i18n="admin.organizeButton">Düzeni Kaydet</button>
+              </form>
+
+              <form class="admin-card" id="priceUpdateForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.priceKicker">Prezzo</span>
+                  <h3 data-i18n="admin.priceTitle">Fiyat güncelle</h3>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.productLabel">Ürün seç</span>
+                  <select id="priceItemSelect"></select>
+                </label>
+
+                <label>
+                  <span data-i18n="admin.newPriceLabel">Yeni fiyat</span>
+                  <input id="updatedPrice" type="text" placeholder="570 ₺" required />
+                </label>
+
+                <button class="button button-secondary" type="submit" data-i18n="admin.priceButton">Fiyatı Güncelle</button>
+              </form>
+
+              <form class="admin-card" id="photoUpdateForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.photoKicker">Fotografia</span>
+                  <h3 data-i18n="admin.photoTitle">Fotoğraf ekle</h3>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.productLabel">Ürün seç</span>
+                  <select id="photoItemSelect"></select>
+                </label>
+
+                <label class="file-field">
+                  <span data-i18n="admin.photoFileLabel">Fotoğraf dosyası</span>
+                  <input id="updatedPhotoFile" type="file" accept="image/*" />
+                </label>
+
+                <button class="button button-secondary" type="submit" data-i18n="admin.photoButton">Fotoğrafı Güncelle</button>
+              </form>
+
+              <form class="admin-card" id="visibilityForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.visibilityKicker">Visibile</span>
+                  <h3 data-i18n="admin.visibilityTitle">Gizle / göster</h3>
+                </div>
+
+                <label>
+                  <span data-i18n="admin.productLabel">Ürün seç</span>
+                  <select id="visibilityItemSelect"></select>
+                </label>
+
+                <label class="checkbox-field">
+                  <input id="visibilityToggle" type="checkbox" />
+                  <span data-i18n="admin.visibleLabel">Menüde görünür</span>
+                </label>
+
+                <button class="button button-secondary" type="submit" data-i18n="admin.visibilityButton">Görünürlüğü Kaydet</button>
+              </form>
+
+              <form class="admin-card admin-danger-card" id="deletePizzaForm">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.deleteKicker">Rimuovi</span>
+                  <h3 data-i18n="admin.deleteTitle">Pizza sil</h3>
+                </div>
+
+                <p class="admin-card-copy" data-i18n="admin.deleteCopy">
+                  Silinen ürün veritabanından kaldırılır. Görsel Supabase Storage içinde ise dosya da temizlenir.
+                </p>
+
+                <label>
+                  <span data-i18n="admin.productLabel">Ürün seç</span>
+                  <select id="deleteItemSelect"></select>
+                </label>
+
+                <button class="button button-danger" type="submit" data-i18n="admin.deleteButton">Seçili Ürünü Sil</button>
+              </form>
+
+              <aside class="admin-card qr-admin-card">
+                <div class="admin-card-heading">
+                  <span data-i18n="admin.qrKicker">QR</span>
+                  <h3 data-i18n="admin.qrTitle">Baskı için QR</h3>
+                </div>
+                <p class="admin-card-copy" data-i18n="admin.qrCopy">
+                  Bu QR kod doğrudan Vercel menü adresine gider.
+                </p>
+                <img class="qr-admin-image" src="qr-code.svg" alt="https://pizzeria-tov.vercel.app QR kodu" />
+                <div class="public-url-line">
+                  <span data-i18n="admin.publicUrlLabel">Menü URL</span>
+                  <strong id="publicMenuUrlText">https://pizzeria-tov.vercel.app</strong>
+                </div>
+              </aside>
+            </div>
+
+            <div class="admin-actions">
+              <a class="button button-tertiary" href="index.html#menu" data-i18n="admin.backToMenu">
+                Menüye Dön
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
